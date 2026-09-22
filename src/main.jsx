@@ -1,169 +1,1986 @@
-import React, { useEffect, useState } from 'react'
-import { createRoot } from 'react-dom/client'
-import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
-import thresholds from '../config/jurisdiction-thresholds.json'
-import pioMappings from '../config/pio-mappings.json'
-import en from '../i18n/en.json'
-import hi from '../i18n/hi.json'
-import mr from '../i18n/mr.json'
-import te from '../i18n/te.json'
-import ta from '../i18n/ta.json'
-import kn from '../i18n/kn.json'
-import ml from '../i18n/ml.json'
-import './styles.css'
+import React, { useEffect, useState } from "react";
+import { createRoot } from "react-dom/client";
+import {
+  BrowserRouter,
+  Navigate,
+  Route,
+  Routes,
+  useLocation,
+  useNavigate,
+} from "react-router-dom";
+import thresholds from "../config/jurisdiction-thresholds.json";
+import pioMappings from "../config/pio-mappings.json";
+import en from "../i18n/en.json";
+import hi from "../i18n/hi.json";
+import mr from "../i18n/mr.json";
+import te from "../i18n/te.json";
+import ta from "../i18n/ta.json";
+import kn from "../i18n/kn.json";
+import ml from "../i18n/ml.json";
+import "./styles.css";
 
-const states = ['Andhra Pradesh', 'Assam', 'Bihar', 'Delhi', 'Goa', 'Gujarat', 'Haryana', 'Himachal Pradesh', 'Jharkhand', 'Karnataka', 'Kerala', 'Madhya Pradesh', 'Maharashtra', 'Odisha', 'Punjab', 'Rajasthan', 'Tamil Nadu', 'Telangana', 'Uttar Pradesh', 'West Bengal']
-const emptyAddress = { house: '', street: '', city: '', state: '', pin: '' }
-const blankRTI = { name: '', applicantAddress: { ...emptyAddress }, contact: '', level: 'State', subject: '', information: '', period: '' }
-const blankConsumer = { name: '', complainantAddress: { ...emptyAddress }, complainantEmail: '', complainantPhone: '', oppositeName: '', oppositeAddress: { ...emptyAddress }, oppositeEmail: '', oppositePhone: '', nature: 'defective product', productName: '', incidentDate: '', value: '', invoiceNumber: '', defectDescription: '', ticketNumbers: '', compensation: '', mentalAgony: '', litigationCosts: '', evidence: [], contacted: 'no', forumBasis: 'residence', place: '' }
-const addressFields = ['house', 'street', 'pin', 'city', 'state']
-function joinAddress(address) { return [address.house, address.street, address.city, address.state, address.pin].filter(Boolean).join(', ') }
+const states = [
+  "Andhra Pradesh",
+  "Assam",
+  "Bihar",
+  "Delhi",
+  "Goa",
+  "Gujarat",
+  "Haryana",
+  "Himachal Pradesh",
+  "Jharkhand",
+  "Karnataka",
+  "Kerala",
+  "Madhya Pradesh",
+  "Maharashtra",
+  "Odisha",
+  "Punjab",
+  "Rajasthan",
+  "Tamil Nadu",
+  "Telangana",
+  "Uttar Pradesh",
+  "West Bengal",
+];
+const emptyAddress = { house: "", street: "", city: "", state: "", pin: "" };
+const blankRTI = {
+  name: "",
+  applicantAddress: { ...emptyAddress },
+  contact: "",
+  level: "State",
+  subject: "",
+  information: "",
+  period: "",
+};
+const blankConsumer = {
+  name: "",
+  complainantAddress: { ...emptyAddress },
+  complainantEmail: "",
+  complainantPhone: "",
+  oppositeName: "",
+  oppositeAddress: { ...emptyAddress },
+  oppositeEmail: "",
+  oppositePhone: "",
+  nature: "defective product",
+  productName: "",
+  incidentDate: "",
+  value: "",
+  invoiceNumber: "",
+  defectDescription: "",
+  ticketNumbers: "",
+  compensation: "",
+  mentalAgony: "",
+  litigationCosts: "",
+  evidence: [],
+  contacted: "no",
+  forumBasis: "residence",
+  place: "",
+};
+const addressFields = ["house", "street", "pin", "city", "state"];
+function joinAddress(address) {
+  return [
+    address.house,
+    address.street,
+    address.city,
+    address.state,
+    address.pin,
+  ]
+    .filter(Boolean)
+    .join(", ");
+}
 function getConsumerValidationError(data) {
-    const required = [data.name, data.complainantAddress.house, data.complainantAddress.street, data.complainantAddress.city, data.complainantAddress.state, data.complainantAddress.pin, data.oppositeName, data.oppositeAddress.house, data.oppositeAddress.street, data.oppositeAddress.city, data.oppositeAddress.state, data.oppositeAddress.pin, data.productName, data.incidentDate, data.value, data.defectDescription, data.place]
-    const today = new Date().toISOString().slice(0, 10)
-    const email = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    const phone = /^\d{10}$/
-    if (!required.every(Boolean)) return 'Please complete all required fields, including both full addresses, names, product details, date, amount, complaint description, and filing district.'
-    if (!/^\d{6}$/.test(data.complainantAddress.pin) || !/^\d{6}$/.test(data.oppositeAddress.pin)) return 'Each PIN Code must contain exactly 6 digits.'
-    if (!phone.test(data.complainantPhone) || (data.oppositePhone && !phone.test(data.oppositePhone))) return 'Phone numbers must contain exactly 10 digits.'
-    if ((data.complainantEmail && !email.test(data.complainantEmail)) || (data.oppositeEmail && !email.test(data.oppositeEmail))) return 'Enter a valid email address or leave the optional email field blank.'
-    if (Number(data.value) <= 0 || Number(data.mentalAgony) < 0 || Number(data.litigationCosts) < 0) return 'Claim, compensation, and litigation amounts must be valid positive numbers or zero for optional relief amounts.'
-    if (data.incidentDate > today) return 'The transaction or incident date cannot be in the future.'
-    return ''
+  const required = [
+    data.name,
+    data.complainantAddress.house,
+    data.complainantAddress.street,
+    data.complainantAddress.city,
+    data.complainantAddress.state,
+    data.complainantAddress.pin,
+    data.oppositeName,
+    data.oppositeAddress.house,
+    data.oppositeAddress.street,
+    data.oppositeAddress.city,
+    data.oppositeAddress.state,
+    data.oppositeAddress.pin,
+    data.productName,
+    data.incidentDate,
+    data.value,
+    data.defectDescription,
+    data.place,
+  ];
+  const today = new Date().toISOString().slice(0, 10);
+  const email = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  const phone = /^\d{10}$/;
+  if (!required.every(Boolean))
+    return "Please complete all required fields, including both full addresses, names, product details, date, amount, complaint description, and filing district.";
+  if (
+    !/^\d{6}$/.test(data.complainantAddress.pin) ||
+    !/^\d{6}$/.test(data.oppositeAddress.pin)
+  )
+    return "Each PIN Code must contain exactly 6 digits.";
+  if (
+    !phone.test(data.complainantPhone) ||
+    (data.oppositePhone && !phone.test(data.oppositePhone))
+  )
+    return "Phone numbers must contain exactly 10 digits.";
+  if (
+    (data.complainantEmail && !email.test(data.complainantEmail)) ||
+    (data.oppositeEmail && !email.test(data.oppositeEmail))
+  )
+    return "Enter a valid email address or leave the optional email field blank.";
+  if (
+    Number(data.value) <= 0 ||
+    Number(data.mentalAgony) < 0 ||
+    Number(data.litigationCosts) < 0
+  )
+    return "Claim, compensation, and litigation amounts must be valid positive numbers or zero for optional relief amounts.";
+  if (data.incidentDate > today)
+    return "The transaction or incident date cannot be in the future.";
+  return "";
 }
-function validateConsumer(data) { const error = getConsumerValidationError(data); if (error) window.alert(error); return !error }
+function validateConsumer(data) {
+  const error = getConsumerValidationError(data);
+  if (error) window.alert(error);
+  return !error;
+}
 
-const languageNames = { en: 'English', hi: 'हिन्दी', mr: 'मराठी', te: 'తెలుగు', ta: 'தமிழ்', kn: 'ಕನ್ನಡ', ml: 'മലയാളം' }
+const languageNames = {
+  en: "English",
+  hi: "हिन्दी",
+  mr: "मराठी",
+  te: "తెలుగు",
+  ta: "தமிழ்",
+  kn: "ಕನ್ನಡ",
+  ml: "മലയാളം",
+};
 const legacyTranslations = {
-    hi: {
-        'What happens next': 'आगे क्या होगा', 'A simpler way to speak up': 'अपनी बात रखने का आसान तरीका', 'Know your rights.': 'अपने अधिकार जानें।', 'Take the next step.': 'अगला कदम उठाएं।', 'Answer a few simple questions. Get a ready-to-file draft and clear instructions for what to do next.': 'कुछ आसान सवालों के जवाब दें। तैयार ड्राफ्ट और अगले कदम की स्पष्ट जानकारी पाएं।', 'Government office isn’t responding / I want information': 'सरकारी कार्यालय जवाब नहीं दे रहा / मुझे जानकारी चाहिए', 'A company or seller has wronged me': 'किसी कंपनी या विक्रेता ने मेरे साथ गलत किया', "I'm not sure where to start": 'मुझे पता नहीं कहां से शुरू करूं', 'Draft an RTI application under the RTI Act, 2005.': 'RTI अधिनियम, 2005 के तहत आवेदन बनाएं।', 'Prepare a consumer complaint for e-Daakhil.': 'ई-दाखिल के लिए उपभोक्ता शिकायत बनाएं।', 'Three quick questions will point you in the right direction.': 'तीन छोटे सवाल आपको सही दिशा दिखाएंगे।', 'About 5 minutes': 'लगभग 5 मिनट', 'No account needed': 'खाते की जरूरत नहीं', 'English + Hindi': 'अंग्रेजी + हिंदी', 'Quick check': 'त्वरित जांच', 'Where is the problem?': 'समस्या कहां है?', 'What do you need?': 'आपको क्या चाहिए?', 'Which sounds closer?': 'कौन सा विकल्प सही लगता है?', 'A government office or public service': 'सरकारी कार्यालय या सार्वजनिक सेवा', 'A shop, company, builder or insurer': 'दुकान, कंपनी, बिल्डर या बीमा कंपनी', 'Information or an official record': 'जानकारी या आधिकारिक रिकॉर्ड', 'A refund, repair or compensation': 'रिफंड, मरम्मत या मुआवजा', 'I want transparency from a public authority': 'मैं सरकारी विभाग से पारदर्शिता चाहता हूं', 'I want a company to fix what went wrong': 'मैं चाहता हूं कि कंपनी समस्या ठीक करे', 'Back': 'पीछे', 'RTI application': 'RTI आवेदन', 'Tell us what information you need.': 'बताएं कि आपको कौन सी जानकारी चाहिए।', 'We’ll address your application to the most likely Public Information Officer.': 'हम आपका आवेदन सही जन सूचना अधिकारी को भेजने के लिए तैयार करेंगे।', 'Your details': 'आपका विवरण', 'Full name': 'पूरा नाम', 'Address for reply': 'जवाब के लिए पता', 'Phone or email': 'फोन या ईमेल', 'The request': 'अनुरोध', 'Level of government': 'सरकार का स्तर', 'State': 'राज्य', 'Department or subject': 'विभाग या विषय', 'What information are you requesting?': 'आप कौन सी जानकारी मांग रहे हैं?', 'Time period (optional)': 'समय अवधि (वैकल्पिक)', 'Review draft': 'ड्राफ्ट देखें', 'Consumer complaint': 'उपभोक्ता शिकायत', 'Tell us what went wrong.': 'बताएं कि क्या गलत हुआ।', 'Your answers will become a clear complaint for the consumer commission.': 'आपके जवाब उपभोक्ता आयोग के लिए स्पष्ट शिकायत बनेंगे।', 'The other party': 'दूसरा पक्ष', 'Seller / company name': 'विक्रेता / कंपनी का नाम', 'Seller / company address': 'विक्रेता / कंपनी का पता', 'What happened?': 'क्या हुआ?', 'Compensation you are claiming (₹)': 'आप कितना मुआवजा मांग रहे हैं (₹)', 'Supporting proof': 'सहायक दस्तावेज', 'Did you complain to the seller already?': 'क्या आपने विक्रेता से पहले शिकायत की है?', 'Jurisdiction: where should this be filed?': 'अधिकार क्षेत्र: इसे कहां दाखिल करें?', 'City / district for filing': 'दाखिल करने का शहर / जिला', 'Almost ready': 'लगभग तैयार', 'Review your draft': 'अपना ड्राफ्ट देखें', 'Check the details below. You can go back and edit anything before downloading.': 'नीचे दिए विवरण जांचें। डाउनलोड करने से पहले आप बदलाव कर सकते हैं।', 'Edit answers': 'जवाब बदलें', 'Download draft': 'ड्राफ्ट डाउनलोड करें', 'Your draft is ready': 'आपका ड्राफ्ट तैयार है', 'One clear next step.': 'अब एक स्पष्ट अगला कदम।', 'Download again': 'फिर से डाउनलोड करें', 'File your RTI application': 'अपना RTI आवेदन दाखिल करें', 'File through e-Daakhil': 'ई-दाखिल के जरिए दाखिल करें', 'Before you submit': 'जमा करने से पहले', 'What happens next': 'आगे क्या होगा', 'You have more options than you think.': 'आपके पास कई विकल्प हैं।', 'RTI: no response?': 'RTI: जवाब नहीं मिला?', 'Consumer complaint filed?': 'उपभोक्ता शिकायत दाखिल हो गई?', 'Keep your record': 'अपना रिकॉर्ड सुरक्षित रखें', 'Back to Adhikar': 'अधिकार पर वापस जाएं', 'This tool helps you draft your application correctly but does not provide legal advice. Verify current fees, formats, and jurisdiction rules before filing, as these can change.': 'यह टूल आवेदन का सही ड्राफ्ट बनाने में मदद करता है, कानूनी सलाह नहीं देता। दाखिल करने से पहले शुल्क, प्रारूप और अधिकार क्षेत्र के मौजूदा नियमों की जांच करें।'
-    }
+  hi: {
+    "What happens next": "आगे क्या होगा",
+    "A simpler way to speak up": "अपनी बात रखने का आसान तरीका",
+    "Know your rights.": "अपने अधिकार जानें।",
+    "Take the next step.": "अगला कदम उठाएं।",
+    "Answer a few simple questions. Get a ready-to-file draft and clear instructions for what to do next.":
+      "कुछ आसान सवालों के जवाब दें। तैयार ड्राफ्ट और अगले कदम की स्पष्ट जानकारी पाएं।",
+    "Government office isn’t responding / I want information":
+      "सरकारी कार्यालय जवाब नहीं दे रहा / मुझे जानकारी चाहिए",
+    "A company or seller has wronged me":
+      "किसी कंपनी या विक्रेता ने मेरे साथ गलत किया",
+    "I'm not sure where to start": "मुझे पता नहीं कहां से शुरू करूं",
+    "Draft an RTI application under the RTI Act, 2005.":
+      "RTI अधिनियम, 2005 के तहत आवेदन बनाएं।",
+    "Prepare a consumer complaint for e-Daakhil.":
+      "ई-दाखिल के लिए उपभोक्ता शिकायत बनाएं।",
+    "Three quick questions will point you in the right direction.":
+      "तीन छोटे सवाल आपको सही दिशा दिखाएंगे।",
+    "About 5 minutes": "लगभग 5 मिनट",
+    "No account needed": "खाते की जरूरत नहीं",
+    "English + Hindi": "अंग्रेजी + हिंदी",
+    "Quick check": "त्वरित जांच",
+    "Where is the problem?": "समस्या कहां है?",
+    "What do you need?": "आपको क्या चाहिए?",
+    "Which sounds closer?": "कौन सा विकल्प सही लगता है?",
+    "A government office or public service":
+      "सरकारी कार्यालय या सार्वजनिक सेवा",
+    "A shop, company, builder or insurer": "दुकान, कंपनी, बिल्डर या बीमा कंपनी",
+    "Information or an official record": "जानकारी या आधिकारिक रिकॉर्ड",
+    "A refund, repair or compensation": "रिफंड, मरम्मत या मुआवजा",
+    "I want transparency from a public authority":
+      "मैं सरकारी विभाग से पारदर्शिता चाहता हूं",
+    "I want a company to fix what went wrong":
+      "मैं चाहता हूं कि कंपनी समस्या ठीक करे",
+    Back: "पीछे",
+    "RTI application": "RTI आवेदन",
+    "Tell us what information you need.": "बताएं कि आपको कौन सी जानकारी चाहिए।",
+    "We’ll address your application to the most likely Public Information Officer.":
+      "हम आपका आवेदन सही जन सूचना अधिकारी को भेजने के लिए तैयार करेंगे।",
+    "Your details": "आपका विवरण",
+    "Full name": "पूरा नाम",
+    "Address for reply": "जवाब के लिए पता",
+    "Phone or email": "फोन या ईमेल",
+    "The request": "अनुरोध",
+    "Level of government": "सरकार का स्तर",
+    State: "राज्य",
+    "Department or subject": "विभाग या विषय",
+    "What information are you requesting?": "आप कौन सी जानकारी मांग रहे हैं?",
+    "Time period (optional)": "समय अवधि (वैकल्पिक)",
+    "Review draft": "ड्राफ्ट देखें",
+    "Consumer complaint": "उपभोक्ता शिकायत",
+    "Tell us what went wrong.": "बताएं कि क्या गलत हुआ।",
+    "Your answers will become a clear complaint for the consumer commission.":
+      "आपके जवाब उपभोक्ता आयोग के लिए स्पष्ट शिकायत बनेंगे।",
+    "The other party": "दूसरा पक्ष",
+    "Seller / company name": "विक्रेता / कंपनी का नाम",
+    "Seller / company address": "विक्रेता / कंपनी का पता",
+    "What happened?": "क्या हुआ?",
+    "Compensation you are claiming (₹)": "आप कितना मुआवजा मांग रहे हैं (₹)",
+    "Supporting proof": "सहायक दस्तावेज",
+    "Did you complain to the seller already?":
+      "क्या आपने विक्रेता से पहले शिकायत की है?",
+    "Jurisdiction: where should this be filed?":
+      "अधिकार क्षेत्र: इसे कहां दाखिल करें?",
+    "City / district for filing": "दाखिल करने का शहर / जिला",
+    "Almost ready": "लगभग तैयार",
+    "Review your draft": "अपना ड्राफ्ट देखें",
+    "Check the details below. You can go back and edit anything before downloading.":
+      "नीचे दिए विवरण जांचें। डाउनलोड करने से पहले आप बदलाव कर सकते हैं।",
+    "Edit answers": "जवाब बदलें",
+    "Download draft": "ड्राफ्ट डाउनलोड करें",
+    "Your draft is ready": "आपका ड्राफ्ट तैयार है",
+    "One clear next step.": "अब एक स्पष्ट अगला कदम।",
+    "Download again": "फिर से डाउनलोड करें",
+    "File your RTI application": "अपना RTI आवेदन दाखिल करें",
+    "File through e-Daakhil": "ई-दाखिल के जरिए दाखिल करें",
+    "Before you submit": "जमा करने से पहले",
+    "What happens next": "आगे क्या होगा",
+    "You have more options than you think.": "आपके पास कई विकल्प हैं।",
+    "RTI: no response?": "RTI: जवाब नहीं मिला?",
+    "Consumer complaint filed?": "उपभोक्ता शिकायत दाखिल हो गई?",
+    "Keep your record": "अपना रिकॉर्ड सुरक्षित रखें",
+    "Back to Adhikar": "अधिकार पर वापस जाएं",
+    "This tool helps you draft your application correctly but does not provide legal advice. Verify current fees, formats, and jurisdiction rules before filing, as these can change.":
+      "यह टूल आवेदन का सही ड्राफ्ट बनाने में मदद करता है, कानूनी सलाह नहीं देता। दाखिल करने से पहले शुल्क, प्रारूप और अधिकार क्षेत्र के मौजूदा नियमों की जांच करें।",
+  },
+};
+legacyTranslations.mr = {
+  ...legacyTranslations.hi,
+  "What happens next": "पुढे काय होईल",
+  "A simpler way to speak up": "आपले म्हणणे मांडण्याचा सोपा मार्ग",
+  "Know your rights.": "आपले हक्क जाणून घ्या.",
+  "Take the next step.": "पुढचे पाऊल उचला.",
+  "Government office isn’t responding / I want information":
+    "सरकारी कार्यालय उत्तर देत नाही / मला माहिती हवी आहे",
+  "A company or seller has wronged me":
+    "कंपनी किंवा विक्रेत्याने माझ्यावर अन्याय केला आहे",
+  "I'm not sure where to start": "कुठून सुरुवात करावी हे कळत नाही",
+  "English + Hindi": "इंग्रजी + मराठी",
+  Back: "मागे",
+};
+legacyTranslations.te = {
+  ...legacyTranslations.hi,
+  "What happens next": "తర్వాత ఏమి జరుగుతుంది",
+  "A simpler way to speak up": "మీ మాట చెప్పడానికి సులభమైన మార్గం",
+  "Know your rights.": "మీ హక్కులను తెలుసుకోండి.",
+  "Take the next step.": "తదుపరి అడుగు వేయండి.",
+  "Government office isn’t responding / I want information":
+    "ప్రభుత్వ కార్యాలయం స్పందించడం లేదు / నాకు సమాచారం కావాలి",
+  "A company or seller has wronged me":
+    "కంపెనీ లేదా విక్రేత నాకు అన్యాయం చేశారు",
+  "I'm not sure where to start": "ఎక్కడ ప్రారంభించాలో తెలియదు",
+  "English + Hindi": "ఇంగ్లీష్ + తెలుగు",
+  Back: "వెనుకకు",
+};
+legacyTranslations.ta = {
+  ...legacyTranslations.hi,
+  "What happens next": "அடுத்து என்ன நடக்கும்",
+  "A simpler way to speak up": "உங்கள் கருத்தை தெரிவிக்க எளிய வழி",
+  "Know your rights.": "உங்கள் உரிமைகளை அறியுங்கள்.",
+  "Take the next step.": "அடுத்த படியை எடுங்கள்.",
+  "Government office isn’t responding / I want information":
+    "அரசு அலுவலகம் பதிலளிக்கவில்லை / எனக்கு தகவல் வேண்டும்",
+  "A company or seller has wronged me":
+    "ஒரு நிறுவனம் அல்லது விற்பனையாளர் எனக்கு அநீதி செய்தார்",
+  "I'm not sure where to start": "எங்கு தொடங்குவது என்று தெரியவில்லை",
+  "English + Hindi": "ஆங்கிலம் + தமிழ்",
+  Back: "பின்னால்",
+};
+legacyTranslations.kn = {
+  ...legacyTranslations.hi,
+  "What happens next": "ಮುಂದೆ ಏನಾಗುತ್ತದೆ",
+  "A simpler way to speak up": "ನಿಮ್ಮ ಮಾತು ಹೇಳಲು ಸರಳ ಮಾರ್ಗ",
+  "Know your rights.": "ನಿಮ್ಮ ಹಕ್ಕುಗಳನ್ನು ತಿಳಿಯಿರಿ.",
+  "Take the next step.": "ಮುಂದಿನ ಹೆಜ್ಜೆ ಇಡಿ.",
+  "Government office isn’t responding / I want information":
+    "ಸರ್ಕಾರಿ ಕಚೇರಿ ಪ್ರತಿಕ್ರಿಯಿಸುತ್ತಿಲ್ಲ / ನನಗೆ ಮಾಹಿತಿ ಬೇಕು",
+  "A company or seller has wronged me":
+    "ಕಂಪನಿ ಅಥವಾ ಮಾರಾಟಗಾರರು ನನಗೆ ಅನ್ಯಾಯ ಮಾಡಿದ್ದಾರೆ",
+  "I'm not sure where to start": "ಎಲ್ಲಿ ಪ್ರಾರಂಭಿಸಬೇಕು ಎಂದು ತಿಳಿದಿಲ್ಲ",
+  "English + Hindi": "ಇಂಗ್ಲಿಷ್ + ಕನ್ನಡ",
+  Back: "ಹಿಂದಕ್ಕೆ",
+};
+legacyTranslations.ml = {
+  ...legacyTranslations.hi,
+  "What happens next": "അടുത്തത് എന്ത് സംഭവിക്കും",
+  "A simpler way to speak up": "നിങ്ങളുടെ വാക്ക് പറയാനുള്ള ലളിതമായ വഴി",
+  "Know your rights.": "നിങ്ങളുടെ അവകാശങ്ങൾ അറിയുക.",
+  "Take the next step.": "അടുത്ത നടപടി സ്വീകരിക്കുക.",
+  "Government office isn’t responding / I want information":
+    "സർക്കാർ ഓഫീസ് പ്രതികരിക്കുന്നില്ല / എനിക്ക് വിവരം വേണം",
+  "A company or seller has wronged me":
+    "ഒരു കമ്പനി അല്ലെങ്കിൽ വിൽപ്പനക്കാരൻ എന്നോട് തെറ്റ് ചെയ്തു",
+  "I'm not sure where to start": "എവിടെ തുടങ്ങണമെന്ന് അറിയില്ല",
+  "English + Hindi": "ഇംഗ്ലീഷ് + മലയാളം",
+  Back: "പിന്നിലേക്ക്",
+};
+const translations = {
+  en,
+  hi,
+  mr: { ...en, ...mr },
+  te: { ...en, ...te },
+  ta: { ...en, ...ta },
+  kn: { ...en, ...kn },
+  ml: { ...en, ...ml },
+};
+function text(language, key) {
+  return (translations[language] || en)[key] || key;
 }
-legacyTranslations.mr = { ...legacyTranslations.hi, 'What happens next': 'पुढे काय होईल', 'A simpler way to speak up': 'आपले म्हणणे मांडण्याचा सोपा मार्ग', 'Know your rights.': 'आपले हक्क जाणून घ्या.', 'Take the next step.': 'पुढचे पाऊल उचला.', 'Government office isn’t responding / I want information': 'सरकारी कार्यालय उत्तर देत नाही / मला माहिती हवी आहे', 'A company or seller has wronged me': 'कंपनी किंवा विक्रेत्याने माझ्यावर अन्याय केला आहे', 'I\'m not sure where to start': 'कुठून सुरुवात करावी हे कळत नाही', 'English + Hindi': 'इंग्रजी + मराठी', 'Back': 'मागे' }
-legacyTranslations.te = { ...legacyTranslations.hi, 'What happens next': 'తర్వాత ఏమి జరుగుతుంది', 'A simpler way to speak up': 'మీ మాట చెప్పడానికి సులభమైన మార్గం', 'Know your rights.': 'మీ హక్కులను తెలుసుకోండి.', 'Take the next step.': 'తదుపరి అడుగు వేయండి.', 'Government office isn’t responding / I want information': 'ప్రభుత్వ కార్యాలయం స్పందించడం లేదు / నాకు సమాచారం కావాలి', 'A company or seller has wronged me': 'కంపెనీ లేదా విక్రేత నాకు అన్యాయం చేశారు', 'I\'m not sure where to start': 'ఎక్కడ ప్రారంభించాలో తెలియదు', 'English + Hindi': 'ఇంగ్లీష్ + తెలుగు', 'Back': 'వెనుకకు' }
-legacyTranslations.ta = { ...legacyTranslations.hi, 'What happens next': 'அடுத்து என்ன நடக்கும்', 'A simpler way to speak up': 'உங்கள் கருத்தை தெரிவிக்க எளிய வழி', 'Know your rights.': 'உங்கள் உரிமைகளை அறியுங்கள்.', 'Take the next step.': 'அடுத்த படியை எடுங்கள்.', 'Government office isn’t responding / I want information': 'அரசு அலுவலகம் பதிலளிக்கவில்லை / எனக்கு தகவல் வேண்டும்', 'A company or seller has wronged me': 'ஒரு நிறுவனம் அல்லது விற்பனையாளர் எனக்கு அநீதி செய்தார்', 'I\'m not sure where to start': 'எங்கு தொடங்குவது என்று தெரியவில்லை', 'English + Hindi': 'ஆங்கிலம் + தமிழ்', 'Back': 'பின்னால்' }
-legacyTranslations.kn = { ...legacyTranslations.hi, 'What happens next': 'ಮುಂದೆ ಏನಾಗುತ್ತದೆ', 'A simpler way to speak up': 'ನಿಮ್ಮ ಮಾತು ಹೇಳಲು ಸರಳ ಮಾರ್ಗ', 'Know your rights.': 'ನಿಮ್ಮ ಹಕ್ಕುಗಳನ್ನು ತಿಳಿಯಿರಿ.', 'Take the next step.': 'ಮುಂದಿನ ಹೆಜ್ಜೆ ಇಡಿ.', 'Government office isn’t responding / I want information': 'ಸರ್ಕಾರಿ ಕಚೇರಿ ಪ್ರತಿಕ್ರಿಯಿಸುತ್ತಿಲ್ಲ / ನನಗೆ ಮಾಹಿತಿ ಬೇಕು', 'A company or seller has wronged me': 'ಕಂಪನಿ ಅಥವಾ ಮಾರಾಟಗಾರರು ನನಗೆ ಅನ್ಯಾಯ ಮಾಡಿದ್ದಾರೆ', 'I\'m not sure where to start': 'ಎಲ್ಲಿ ಪ್ರಾರಂಭಿಸಬೇಕು ಎಂದು ತಿಳಿದಿಲ್ಲ', 'English + Hindi': 'ಇಂಗ್ಲಿಷ್ + ಕನ್ನಡ', 'Back': 'ಹಿಂದಕ್ಕೆ' }
-legacyTranslations.ml = { ...legacyTranslations.hi, 'What happens next': 'അടുത്തത് എന്ത് സംഭവിക്കും', 'A simpler way to speak up': 'നിങ്ങളുടെ വാക്ക് പറയാനുള്ള ലളിതമായ വഴി', 'Know your rights.': 'നിങ്ങളുടെ അവകാശങ്ങൾ അറിയുക.', 'Take the next step.': 'അടുത്ത നടപടി സ്വീകരിക്കുക.', 'Government office isn’t responding / I want information': 'സർക്കാർ ഓഫീസ് പ്രതികരിക്കുന്നില്ല / എനിക്ക് വിവരം വേണം', 'A company or seller has wronged me': 'ഒരു കമ്പനി അല്ലെങ്കിൽ വിൽപ്പനക്കാരൻ എന്നോട് തെറ്റ് ചെയ്തു', 'I\'m not sure where to start': 'എവിടെ തുടങ്ങണമെന്ന് അറിയില്ല', 'English + Hindi': 'ഇംഗ്ലീഷ് + മലയാളം', 'Back': 'പിന്നിലേക്ക്' }
-const translations = { en, hi, mr: { ...en, ...mr }, te: { ...en, ...te }, ta: { ...en, ...ta }, kn: { ...en, ...kn }, ml: { ...en, ...ml } }
-function text(language, key) { return (translations[language] || en)[key] || key }
 function getAnnexures(data) {
-    const items = ['Invoice / purchase receipt', 'Payment proof']
-    if (data.nature === 'defective product') items.push('Unboxing video / defect photographs')
-    if (data.nature === 'non-delivery') items.push('Tracking and delivery logs')
-    const aliases = { 'invoice / receipt': 'Invoice / purchase receipt', 'invoice / purchase receipt': 'Invoice / purchase receipt', 'payment receipt / bank statement': 'Payment proof', 'payment proof': 'Payment proof', 'screenshots / photos': 'Photos / videos', 'photos / videos': 'Photos / videos' }
-    const seen = new Set()
-    return [...items, ...data.evidence].filter(item => { const normalized = item.trim().toLowerCase(); const canonical = aliases[normalized] || item.trim(); const key = canonical.toLowerCase(); if (!key || seen.has(key)) return false; seen.add(key); return true })
+  const items = ["Invoice / purchase receipt", "Payment proof"];
+  if (data.nature === "defective product")
+    items.push("Unboxing video / defect photographs");
+  if (data.nature === "non-delivery") items.push("Tracking and delivery logs");
+  const aliases = {
+    "invoice / receipt": "Invoice / purchase receipt",
+    "invoice / purchase receipt": "Invoice / purchase receipt",
+    "payment receipt / bank statement": "Payment proof",
+    "payment proof": "Payment proof",
+    "screenshots / photos": "Photos / videos",
+    "photos / videos": "Photos / videos",
+  };
+  const seen = new Set();
+  return [...items, ...data.evidence].filter((item) => {
+    const normalized = item.trim().toLowerCase();
+    const canonical = aliases[normalized] || item.trim();
+    const key = canonical.toLowerCase();
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
-function cleanGeneratedDraft(draft) { return draft.split('\n').filter(line => !/\[(phone number|email address|phone\/email)\]/i.test(line)).join('\n').replace(/\n{3,}/g, '\n\n') }
+function cleanGeneratedDraft(draft) {
+  return draft
+    .split("\n")
+    .filter(
+      (line) => !/\[(phone number|email address|phone\/email)\]/i.test(line),
+    )
+    .join("\n")
+    .replace(/\n{3,}/g, "\n\n");
+}
 function translatePage(language) {
-    const dictionary = translations[language] || {}
-    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT)
-    while (walker.nextNode()) {
-        const node = walker.currentNode
-        if (node.parentElement.closest('script,style')) continue
-        const original = node.__adhikarOriginal || node.nodeValue.trim()
-        if (!original) continue
-        node.__adhikarOriginal = original
-        const plainOriginal = original.replace(/^[^\p{L}\p{N}]+/u, '')
-        const translated = dictionary[original] || (dictionary[plainOriginal] ? original.slice(0, original.indexOf(plainOriginal)) + dictionary[plainOriginal] : original)
-        node.nodeValue = node.nodeValue.replace(node.nodeValue.trim(), translated)
-    }
-    document.querySelectorAll('select option').forEach(option => {
-        if (!option.dataset.optionOriginal) option.dataset.optionOriginal = option.textContent.trim()
-        option.textContent = dictionary[option.dataset.optionOriginal] || option.dataset.optionOriginal
-    })
-    document.querySelectorAll('input[placeholder], textarea[placeholder]').forEach(node => {
-        if (!node.dataset.placeholderOriginal) node.dataset.placeholderOriginal = node.placeholder
-        node.placeholder = dictionary[node.dataset.placeholderOriginal] || node.dataset.placeholderOriginal
-    })
-    document.querySelectorAll('input[type="email"]').forEach(node => { node.required = false })
+  const dictionary = translations[language] || {};
+  const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+  while (walker.nextNode()) {
+    const node = walker.currentNode;
+    if (node.parentElement.closest("script,style")) continue;
+    const original = node.__adhikarOriginal || node.nodeValue.trim();
+    if (!original) continue;
+    node.__adhikarOriginal = original;
+    const plainOriginal = original.replace(/^[^\p{L}\p{N}]+/u, "");
+    const translated =
+      dictionary[original] ||
+      (dictionary[plainOriginal]
+        ? original.slice(0, original.indexOf(plainOriginal)) +
+          dictionary[plainOriginal]
+        : original);
+    node.nodeValue = node.nodeValue.replace(node.nodeValue.trim(), translated);
+  }
+  document.querySelectorAll("select option").forEach((option) => {
+    if (!option.dataset.optionOriginal)
+      option.dataset.optionOriginal = option.textContent.trim();
+    option.textContent =
+      dictionary[option.dataset.optionOriginal] ||
+      option.dataset.optionOriginal;
+  });
+  document
+    .querySelectorAll("input[placeholder], textarea[placeholder]")
+    .forEach((node) => {
+      if (!node.dataset.placeholderOriginal)
+        node.dataset.placeholderOriginal = node.placeholder;
+      node.placeholder =
+        dictionary[node.dataset.placeholderOriginal] ||
+        node.dataset.placeholderOriginal;
+    });
+  document.querySelectorAll('input[type="email"]').forEach((node) => {
+    node.required = false;
+  });
 }
 
-function formatINR(value) { return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(Number(value) || 0) }
+function formatINR(value) {
+  return new Intl.NumberFormat("en-IN", {
+    style: "currency",
+    currency: "INR",
+    maximumFractionDigits: 0,
+  }).format(Number(value) || 0);
+}
 function findPIO(subject, state) {
-    const lower = subject.toLowerCase()
-    return pioMappings.categories.find(item => item.keywords.some(keyword => lower.includes(keyword))) || pioMappings.categories[pioMappings.categories.length - 1]
+  const lower = subject.toLowerCase();
+  return (
+    pioMappings.categories.find((item) =>
+      item.keywords.some((keyword) => lower.includes(keyword)),
+    ) || pioMappings.categories[pioMappings.categories.length - 1]
+  );
 }
 // Legal disclaimer: verify these inclusive thresholds against current consumer law before relying on generated drafts.
-function getForum(value) { return thresholds.bands.find(band => band.max === null || Number(value) <= band.max) }
+function getForum(value) {
+  return thresholds.bands.find(
+    (band) => band.max === null || Number(value) <= band.max,
+  );
+}
 function App() {
-    const navigate = useNavigate()
-    const location = useLocation()
-    const screen = location.pathname === '/' ? 'home' : location.pathname.slice(1)
-    const setScreen = nextScreen => navigate(nextScreen === 'home' ? '/' : `/${nextScreen}`)
-    const [language, setLanguage] = useState('en')
-    const [rti, setRTI] = useState(blankRTI)
-    const [consumer, setConsumer] = useState(blankConsumer)
-    const [draftReady, setDraftReady] = useState(false)
-    const [result, setResult] = useState(null)
-    const [resumeCode, setResumeCode] = useState('')
-    const [resumeError, setResumeError] = useState('')
-    const [triageStep, setTriageStep] = useState(0)
-    const [triage, setTriage] = useState({})
-    useEffect(() => translatePage(language), [language, screen])
-    useEffect(() => { const savedRTI = localStorage.getItem('adhikar-rti-draft'); const savedConsumer = localStorage.getItem('adhikar-consumer-draft'); if (savedRTI || savedConsumer) { const resume = window.confirm('You have an unfinished draft — resume or start over?'); if (resume) { try { if (savedRTI) setRTI(JSON.parse(savedRTI)); if (savedConsumer) { const saved = JSON.parse(savedConsumer); setConsumer({ ...blankConsumer, ...saved, complainantAddress: { ...blankConsumer.complainantAddress, ...saved.complainantAddress }, oppositeAddress: { ...blankConsumer.oppositeAddress, ...saved.oppositeAddress } }) } } catch { localStorage.removeItem('adhikar-rti-draft'); localStorage.removeItem('adhikar-consumer-draft') } } else { localStorage.removeItem('adhikar-rti-draft'); localStorage.removeItem('adhikar-consumer-draft') } } setDraftReady(true) }, [])
-    useEffect(() => { if (draftReady) localStorage.setItem('adhikar-rti-draft', JSON.stringify(rti)) }, [rti, draftReady])
-    useEffect(() => { if (draftReady) localStorage.setItem('adhikar-consumer-draft', JSON.stringify(consumer)) }, [consumer, draftReady])
+  const navigate = useNavigate();
+  const location = useLocation();
+  const screen =
+    location.pathname === "/" ? "home" : location.pathname.slice(1);
+  const setScreen = (nextScreen) =>
+    navigate(nextScreen === "home" ? "/" : `/${nextScreen}`);
+  const [language, setLanguage] = useState("en");
+  const [rti, setRTI] = useState(blankRTI);
+  const [consumer, setConsumer] = useState(blankConsumer);
+  const [draftReady, setDraftReady] = useState(false);
+  const [result, setResult] = useState(null);
+  const [resumeCode, setResumeCode] = useState("");
+  const [resumeError, setResumeError] = useState("");
+  const [localDraftType, setLocalDraftType] = useState("");
+  const [saveMessage, setSaveMessage] = useState("");
+  const [triageStep, setTriageStep] = useState(0);
+  const [triage, setTriage] = useState({});
+  useEffect(() => translatePage(language), [language, screen]);
+  useEffect(() => {
+    const savedRTI = localStorage.getItem("adhikar-rti-draft");
+    const savedConsumer = localStorage.getItem("adhikar-consumer-draft");
+    if (savedRTI || savedConsumer)
+      setLocalDraftType(savedConsumer ? "consumer" : "rti");
+    setDraftReady(true);
+  }, []);
+  useEffect(() => {
+    if (draftReady)
+      localStorage.setItem("adhikar-rti-draft", JSON.stringify(rti));
+  }, [rti, draftReady]);
+  useEffect(() => {
+    if (draftReady)
+      localStorage.setItem("adhikar-consumer-draft", JSON.stringify(consumer));
+  }, [consumer, draftReady]);
 
-    function begin(type) { setScreen(type); setResult(null) }
-    function routeTriage(answer) {
-        const next = { ...triage, [triageStep]: answer }; setTriage(next)
-        if (triageStep === 2) { setScreen(answer === 'government' ? 'rti' : 'consumer'); setTriageStep(0) } else setTriageStep(triageStep + 1)
+  function clearLocalDraft() {
+    localStorage.removeItem("adhikar-rti-draft");
+    localStorage.removeItem("adhikar-consumer-draft");
+    setRTI(blankRTI);
+    setConsumer(blankConsumer);
+    setLocalDraftType("");
+  }
+  function resumeLocalDraft() {
+    try {
+      if (localDraftType === "rti")
+        setRTI(JSON.parse(localStorage.getItem("adhikar-rti-draft")));
+      else {
+        const saved = JSON.parse(
+          localStorage.getItem("adhikar-consumer-draft"),
+        );
+        setConsumer({
+          ...blankConsumer,
+          ...saved,
+          complainantAddress: {
+            ...blankConsumer.complainantAddress,
+            ...saved.complainantAddress,
+          },
+          oppositeAddress: {
+            ...blankConsumer.oppositeAddress,
+            ...saved.oppositeAddress,
+          },
+        });
+      }
+      setScreen(localDraftType);
+      setLocalDraftType("");
+    } catch {
+      clearLocalDraft();
     }
-    async function finish(type) {
-        const draft = type === 'rti' ? { type, data: { ...rti, address: joinAddress(rti.applicantAddress), state: rti.applicantAddress.state }, pio: findPIO(rti.subject, rti.applicantAddress.state) } : { type, data: { ...consumer, address: joinAddress(consumer.complainantAddress), oppositeAddress: joinAddress(consumer.oppositeAddress) }, forum: getForum(consumer.value) }
-        try { const response = await fetch('/api/drafts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(draft) }); const saved = await response.json(); setResumeCode(saved.code || ''); setResult({ ...draft, resumeCode: saved.code || '' }); setScreen('review') } catch { setResumeCode(''); setResult(draft); setScreen('review') }
+  }
+  async function saveDraft(type) {
+    const current = type === "rti" ? rti : consumer;
+    const partialError =
+      type === "consumer" &&
+      current.complainantPhone &&
+      !/^\d{10}$/.test(current.complainantPhone)
+        ? "Enter a valid 10-digit phone number before saving."
+        : "";
+    if (partialError) {
+      setSaveMessage(partialError);
+      return;
     }
-    async function resumeDraft(code) { setResumeError(''); try { const response = await fetch(`/api/drafts/${code.trim().toUpperCase()}`); if (!response.ok) throw new Error(); const saved = await response.json(); if (saved.data?.type === 'rti') { setRTI(saved.data.data); setResult(saved.data) } else { setConsumer({ ...blankConsumer, ...saved.data.data, complainantAddress: saved.data.data.complainantAddress || { ...emptyAddress }, oppositeAddress: saved.data.data.oppositeAddress || { ...emptyAddress } }); setResult(saved.data) } setResumeCode(code.trim().toUpperCase()); setScreen('review') } catch { setResumeError('That resume code was not found or has expired.') } }
-    async function download() {
-        const title = result.type === 'rti' ? 'RTI APPLICATION' : 'CONSUMER COMPLAINT'
-        const body = result.type === 'rti' ? cleanGeneratedDraft(rtiText(result.data, result.pio)) : cleanGeneratedDraft(consumerText(result.data, result.forum))
-            const response = await fetch('/api/pdf', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title, content: cleanGeneratedDraft(body) }) })
-        const blob = await response.blob()
-        const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = `adhikar-${result.type}-draft.pdf`; link.click(); URL.revokeObjectURL(url); setScreen('output')
+    try {
+      const response = await fetch("/api/drafts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type, resumeCode, data: current }),
+      });
+      const saved = await response.json();
+      setResumeCode(saved.code);
+      setSaveMessage(`Draft saved — your code is ${saved.code}`);
+      setTimeout(() => setSaveMessage(""), 5000);
+    } catch {
+      setSaveMessage(
+        "Draft could not be saved. Your local copy is still safe.",
+      );
     }
-    return <div className="app-shell">
-        <header className="topbar"><button className="brand" onClick={() => setScreen('home')}><span className="brand-mark">अ</span><span>Adhikar</span></button><div className="header-actions"><button className="text-button" onClick={() => setScreen('next')}>What happens next</button><select className="language" aria-label="Choose language" value={language} onChange={event => setLanguage(event.target.value)}>{Object.entries(languageNames).map(([code, name]) => <option value={code} key={code}>{name}</option>)}</select></div></header>
-        <main><Routes><Route path="/" element={<LegacyHome language={language} begin={begin} />} /><Route path="/triage" element={<Triage step={triageStep} route={routeTriage} />} /><Route path="/rti" element={<StructuredRTI language={language} data={rti} setData={setRTI} onBack={() => setScreen('home')} onNext={() => finish('rti')} />} /><Route path="/consumer" element={<StructuredConsumer data={consumer} setData={setConsumer} onBack={() => setScreen('home')} onNext={() => finish('consumer')} />} /><Route path="/review" element={result ? <EnhancedReview result={result} onBack={() => setScreen(result.type)} onDownload={download} /> : <Navigate to="/" replace />} /><Route path="/output" element={result ? <Output result={result} onHome={() => setScreen('home')} /> : <Navigate to="/" replace />} /><Route path="/next" element={<Next onBack={() => setScreen('home')} />} /><Route path="*" element={<Navigate to="/" replace />} /></Routes></main>
-        {screen === 'home' && <ResumeAccess onResume={resumeDraft} resumeError={resumeError} />}
-        {screen === 'review' && resumeCode && <p className="resume-code">Resume code: <strong>{resumeCode}</strong><br/><small>Save this code to come back to this draft later.</small></p>}
-        <footer>This tool helps you draft your application correctly but does not provide legal advice. Verify current fees, formats, and jurisdiction rules before filing, as these can change.</footer>
+  }
+
+  function begin(type) {
+    setScreen(type);
+    setResult(null);
+  }
+  function routeTriage(answer) {
+    const next = { ...triage, [triageStep]: answer };
+    setTriage(next);
+    if (triageStep === 2) {
+      setScreen(answer === "government" ? "rti" : "consumer");
+      setTriageStep(0);
+    } else setTriageStep(triageStep + 1);
+  }
+  async function finish(type) {
+    const draft =
+      type === "rti"
+        ? {
+            type,
+            data: {
+              ...rti,
+              address: joinAddress(rti.applicantAddress),
+              state: rti.applicantAddress.state,
+            },
+            pio: findPIO(rti.subject, rti.applicantAddress.state),
+          }
+        : {
+            type,
+            data: {
+              ...consumer,
+              address: joinAddress(consumer.complainantAddress),
+              oppositeAddress: joinAddress(consumer.oppositeAddress),
+            },
+            forum: getForum(consumer.value),
+          };
+    try {
+      const response = await fetch("/api/drafts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(draft),
+      });
+      const saved = await response.json();
+      setResumeCode(saved.code || "");
+      setResult({ ...draft, resumeCode: saved.code || "" });
+      setScreen("review");
+    } catch {
+      setResumeCode("");
+      setResult(draft);
+      setScreen("review");
+    }
+  }
+  async function resumeDraft(code) {
+    setResumeError("");
+    try {
+      const response = await fetch(`/api/drafts/${code.trim().toUpperCase()}`);
+      if (!response.ok) throw new Error();
+      const saved = await response.json();
+      if (saved.data?.type === "rti") {
+        setRTI(saved.data.data);
+        setResult(saved.data);
+      } else {
+        setConsumer({
+          ...blankConsumer,
+          ...saved.data.data,
+          complainantAddress: saved.data.data.complainantAddress || {
+            ...emptyAddress,
+          },
+          oppositeAddress: saved.data.data.oppositeAddress || {
+            ...emptyAddress,
+          },
+        });
+        setResult(saved.data);
+      }
+      setResumeCode(code.trim().toUpperCase());
+      setScreen("review");
+    } catch {
+      setResumeError("That resume code was not found or has expired.");
+    }
+  }
+  async function download() {
+    const title =
+      result.type === "rti" ? "RTI APPLICATION" : "CONSUMER COMPLAINT";
+    const body =
+      result.type === "rti"
+        ? cleanGeneratedDraft(rtiText(result.data, result.pio))
+        : cleanGeneratedDraft(consumerText(result.data, result.forum));
+    const response = await fetch("/api/pdf", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title, content: cleanGeneratedDraft(body) }),
+    });
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `adhikar-${result.type}-draft.pdf`;
+    link.click();
+    URL.revokeObjectURL(url);
+    setScreen("output");
+  }
+  return (
+    <div className="app-shell">
+      <header className="topbar">
+        <button className="brand" onClick={() => setScreen("home")}>
+          <span className="brand-mark">अ</span>
+          <span>Adhikar</span>
+        </button>
+        <div className="header-actions">
+          <button className="text-button" onClick={() => setScreen("next")}>
+            What happens next
+          </button>
+          <select
+            className="language"
+            aria-label="Choose language"
+            value={language}
+            onChange={(event) => setLanguage(event.target.value)}
+          >
+            {Object.entries(languageNames).map(([code, name]) => (
+              <option value={code} key={code}>
+                {name}
+              </option>
+            ))}
+          </select>
+        </div>
+      </header>
+      <main>
+        <Routes>
+          <Route
+            path="/"
+            element={<LegacyHome language={language} begin={begin} />}
+          />
+          <Route
+            path="/triage"
+            element={<Triage step={triageStep} route={routeTriage} />}
+          />
+          <Route
+            path="/rti"
+            element={
+              <StructuredRTI
+                language={language}
+                data={rti}
+                setData={setRTI}
+                onBack={() => setScreen("home")}
+                onNext={() => finish("rti")}
+              />
+            }
+          />
+          <Route
+            path="/consumer"
+            element={
+              <StructuredConsumer
+                data={consumer}
+                setData={setConsumer}
+                onBack={() => setScreen("home")}
+                onNext={() => finish("consumer")}
+              />
+            }
+          />
+          <Route
+            path="/review"
+            element={
+              result ? (
+                <EnhancedReview
+                  result={result}
+                  onBack={() => setScreen(result.type)}
+                  onDownload={download}
+                />
+              ) : (
+                <Navigate to="/" replace />
+              )
+            }
+          />
+          <Route
+            path="/output"
+            element={
+              result ? (
+                <Output result={result} onHome={() => setScreen("home")} />
+              ) : (
+                <Navigate to="/" replace />
+              )
+            }
+          />
+          <Route
+            path="/next"
+            element={<Next onBack={() => setScreen("home")} />}
+          />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </main>
+      {screen === "home" && (
+        <ResumeAccess onResume={resumeDraft} resumeError={resumeError} />
+      )}
+      {screen === "review" && resumeCode && (
+        <p className="resume-code">
+          Resume code: <strong>{resumeCode}</strong>
+          <br />
+          <small>Save this code to come back to this draft later.</small>
+        </p>
+      )}
+      <footer>
+        This tool helps you draft your application correctly but does not
+        provide legal advice. Verify current fees, formats, and jurisdiction
+        rules before filing, as these can change.
+      </footer>
     </div>
+  );
 }
-function LegacyHome({ language, begin }) { return <section className="hero page"><div className="eyebrow">A simpler way to speak up</div><h1>Know your rights.<br /><em>Take the next step.</em></h1><p className="lead">Answer a few simple questions. Get a ready-to-file draft and clear instructions for what to do next.</p><div className="choice-grid"><Choice number="01" icon="⌁" title="Government office isn’t responding / I want information" detail="Draft an RTI application under the RTI Act, 2005." onClick={() => begin('rti')} /><Choice number="02" icon="□" title="A company or seller has wronged me" detail="Prepare a consumer complaint for e-Daakhil." onClick={() => begin('consumer')} /><Choice number="03" icon="?" title="I'm not sure where to start" detail="Three quick questions will point you in the right direction." onClick={() => begin('triage')} /></div><div className="trust-row"><span>⏱ {text(language, 'About 5 minutes')}</span><span>▣ {text(language, 'No account needed')}</span><span>◌ {text(language, 'Multiple languages')}</span></div></section> }
-function Choice({ number, icon, title, detail, onClick }) { return <button className="choice" onClick={onClick}><span className="choice-top"><span>{number}</span><b>{icon}</b></span><strong>{title}</strong><small>{detail}</small><span className="arrow">↗</span></button> }
-function Triage({ step, route }) { const questions = [['Where is the problem?', [['government', 'A government office or public service'], ['company', 'A shop, company, builder or insurer']]], ['What do you need?', [['information', 'Information or an official record'], ['remedy', 'A refund, repair or compensation']]], ['Which sounds closer?', [['government', 'I want transparency from a public authority'], ['company', 'I want a company to fix what went wrong']]]]; const q = questions[step]; return <section className="page form-page"><Progress current={step + 1} total={3} /><div className="eyebrow">Quick check</div><h2>{q[0]}</h2><div className="answer-list">{q[1].map(([value, label]) => <button className="answer" key={value} onClick={() => route(value)}>{label}<span>↗</span></button>)}</div><button className="back-link" onClick={() => step ? route('') : window.location.reload()}>← Back</button></section> }
-function Progress({ current, total }) { return <div className="progress"><span>STEP {current} OF {total}</span><div><i style={{ width: `${(current / total) * 100}%` }} /></div></div> }
-function Field({ label, children, hint }) { return <label className="field"><span>{label}</span>{children}{hint && <small>{hint}</small>}</label> }
-function LegacyRTI({ data, setData, onBack, onNext }) { const update = (key, value) => setData({ ...data, [key]: value }); return <section className="page form-page"><Progress current={1} total={2} /><div className="eyebrow">RTI application</div><h2>Tell us what information you need.</h2><p className="muted">We’ll address your application to the most likely Public Information Officer.</p><div className="form-section"><h3>Your details</h3><Field label="Full name"><input value={data.name} onChange={e => update('name', e.target.value)} placeholder="e.g. Meena Sharma" /></Field><Field label="Address for reply"><textarea value={data.address} onChange={e => update('address', e.target.value)} placeholder="House number, street, city, PIN code" /></Field><Field label="Phone or email"><input value={data.contact} onChange={e => update('contact', e.target.value)} placeholder="How should the office contact you?" /></Field></div><div className="form-section"><h3>The request</h3><Field label="Level of government"><select value={data.level} onChange={e => update('level', e.target.value)}><option>Central</option><option>State</option><option>Local body</option></select></Field>{data.level === 'State' && <Field label="State"><select value={data.state} onChange={e => update('state', e.target.value)}>{states.map(state => <option key={state}>{state}</option>)}</select></Field>}<Field label="Department or subject"><input value={data.subject} onChange={e => update('subject', e.target.value)} placeholder="e.g. ration card delay, road repair funds" /></Field><Field label="What information are you requesting?" hint="Ask for existing records, documents or status. Avoid asking the officer to explain or take an action."><textarea value={data.information} onChange={e => update('information', e.target.value)} placeholder="Please provide the current status of my ration card application and copies of the relevant file notes." /></Field><Field label="Time period (optional)"><input value={data.period} onChange={e => update('period', e.target.value)} placeholder="e.g. January 2024 to December 2024" /></Field></div><FormActions onBack={onBack} onNext={onNext} /></section> }
-function AddressFields({ value, onChange, prefix }) { const [lookup, setLookup] = useState({ loading: false, error: '' }); const labels = { house: 'House / Flat / Door No.', street: 'Street / Area / Locality', city: 'City / District', state: 'State', pin: 'PIN Code' }; async function lookupPin(pin) { if (!/^\d{6}$/.test(pin)) { setLookup({ loading: false, error: pin ? 'Enter a valid 6-digit PIN code.' : '' }); return } setLookup({ loading: true, error: '' }); try { const response = await fetch(`https://api.postalpincode.in/pincode/${pin}`); if (!response.ok) throw new Error('Network request failed'); const result = await response.json(); const postOffice = result?.[0]?.PostOffice?.[0]; if (result?.[0]?.Status !== 'Success' || !postOffice) throw new Error('PIN code was not found'); onChange({ ...value, pin, city: postOffice.District || value.city, state: postOffice.State || value.state }); setLookup({ loading: false, error: '' }) } catch { setLookup({ loading: false, error: 'Could not find this PIN. Check it or enter the address manually.' }) } } return <div className="address-fields">{addressFields.map(field => <Field key={field} label={labels[field]} hint={field === 'pin' ? (lookup.loading ? 'Looking up address...' : lookup.error || 'Enter 6 digits to auto-fill city and state.') : undefined}><input value={value[field] || ''} maxLength={field === 'pin' ? 6 : undefined} inputMode={field === 'pin' ? 'numeric' : undefined} pattern={field === 'pin' ? '[0-9]{6}' : undefined} required onChange={event => { const next = field === 'pin' ? event.target.value.replace(/\D/g, '') : event.target.value; onChange(field === 'pin' && !next ? { ...value, pin: '', city: '', state: '' } : { ...value, [field]: next }); if (field === 'pin') lookupPin(next) }} placeholder={field === 'pin' ? '6-digit PIN code' : labels[field]} /></Field>)}</div> }
-function StructuredConsumer({ data, setData, onBack, onNext }) { const update = (key, value) => setData({ ...data, [key]: value }); const updateAddress = (key, value) => update(key, value); const toggle = item => update('evidence', data.evidence.includes(item) ? data.evidence.filter(x => x !== item) : [...data.evidence, item]); const submit = event => { event.preventDefault(); if (!event.currentTarget.reportValidity()) return; if (!validateConsumer(data)) return; onNext() }; return <form className="page form-page" onSubmit={submit} noValidate><Progress current={1} total={2} /><div className="eyebrow">Consumer complaint</div><h2>Tell us what went wrong.</h2><p className="muted">Required fields are marked by the browser. Both PIN codes must contain exactly 6 digits.</p><div className="form-section"><h3>Complainant details</h3><Field label="Full name"><input required value={data.name} onChange={e => update('name', e.target.value)} placeholder="e.g. Gopi" /></Field><AddressFields value={data.complainantAddress} onChange={value => updateAddress('complainantAddress', value)} prefix="complainant" /><div className="two-col"><Field label="Phone number"><input required value={data.complainantPhone} onChange={e => update('complainantPhone', e.target.value)} placeholder="10-digit phone number" /></Field><Field label="Email address"><input required type="email" value={data.complainantEmail} onChange={e => update('complainantEmail', e.target.value)} placeholder="name@example.com" /></Field></div></div><div className="form-section"><h3>Opposite party details</h3><Field label="Seller / company name"><input required value={data.oppositeName} onChange={e => update('oppositeName', e.target.value)} placeholder="e.g. Amazon Seller Services Pvt. Ltd." /></Field><AddressFields value={data.oppositeAddress} onChange={value => updateAddress('oppositeAddress', value)} prefix="opposite" /><div className="two-col"><Field label="Phone number"><input required value={data.oppositePhone} onChange={e => update('oppositePhone', e.target.value)} placeholder="Company phone number" /></Field><Field label="Email address"><input required type="email" value={data.oppositeEmail} onChange={e => update('oppositeEmail', e.target.value)} placeholder="support@example.com" /></Field></div></div><div className="form-section"><h3>Transaction and cause of action</h3><Field label="Product / service name"><input required value={data.productName} onChange={e => update('productName', e.target.value)} placeholder="Exact product or service name" /></Field><div className="two-col"><Field label="Transaction / incident date"><input required type="date" value={data.incidentDate} onChange={e => update('incidentDate', e.target.value)} /></Field><Field label="Amount paid (₹)"><input required min="1" type="number" value={data.value} onChange={e => update('value', e.target.value)} placeholder="50000" /></Field></div><Field label="Invoice / order number"><input required value={data.invoiceNumber} onChange={e => update('invoiceNumber', e.target.value)} placeholder="Invoice or order reference" /></Field><Field label="Nature of complaint"><select required value={data.nature} onChange={e => update('nature', e.target.value)}><option value="defective product">Defective product</option><option value="deficient service">Deficient service</option><option value="unfair trade practice">Unfair trade practice</option><option value="e-commerce issue">E-commerce issue</option><option value="insurance">Insurance</option><option value="real estate">Real estate</option><option value="other">Other</option></select></Field><Field label="Defect / deficiency description"><textarea required minLength={20} value={data.defectDescription} onChange={e => update('defectDescription', e.target.value)} placeholder="Describe the defect, deficiency, dates, and impact in complete sentences." /></Field><Field label="Customer support ticket numbers (optional)"><input value={data.ticketNumbers} onChange={e => update('ticketNumbers', e.target.value)} placeholder="e.g. Ticket #12345" /></Field></div><div className="form-section"><h3>Relief sought</h3><div className="two-col"><Field label="Mental agony / harassment compensation (₹)"><input required min="0" type="number" value={data.mentalAgony} onChange={e => update('mentalAgony', e.target.value)} placeholder="30000" /></Field><Field label="Litigation costs (₹)"><input required min="0" type="number" value={data.litigationCosts} onChange={e => update('litigationCosts', e.target.value)} placeholder="10000" /></Field></div><Field label="Did you complain to the seller already?"><select required value={data.contacted} onChange={e => update('contacted', e.target.value)}><option value="yes">Yes, but there was no resolution</option><option value="no">No</option></select></Field></div><div className="form-section"><h3>Jurisdiction and evidence</h3><Field label="Jurisdiction: where should this be filed?"><select required value={data.forumBasis} onChange={e => update('forumBasis', e.target.value)}><option value="residence">Where I live</option><option value="opposite">Where the seller / company has an office</option></select></Field><Field label="City / district for filing"><input required value={data.place} onChange={e => update('place', e.target.value)} placeholder="e.g. Vijayawada" /></Field><div className="check-grid">{['Invoice / receipt', 'Payment receipt / bank statement', 'Warranty card', 'Customer support emails / chat logs', 'Photos / videos', 'Written complaint to seller', 'Other document'].map(item => <label className="check" key={item}><input type="checkbox" checked={data.evidence.includes(item)} onChange={() => toggle(item)} /><span>{item}</span></label>)}</div></div><FormActions onBack={onBack} onNext={onNext} /></form> }
-function Consumer({ data, setData, onBack, onNext }) { const update = (key, value) => setData({ ...data, [key]: value }); const toggle = (item) => update('evidence', data.evidence.includes(item) ? data.evidence.filter(x => x !== item) : [...data.evidence, item]); return <section className="page form-page"><Progress current={1} total={2} /><div className="eyebrow">Consumer complaint</div><h2>Tell us what went wrong.</h2><p className="muted">Your answers will become a clear complaint for the consumer commission.</p><div className="form-section"><h3>Complainant details</h3><Field label="Full name"><input value={data.name} onChange={e => update('name', e.target.value)} placeholder="e.g. Gopi" /></Field><Field label="Complete address"><textarea value={data.address} onChange={e => update('address', e.target.value)} placeholder="House number, street, city, state, PIN code" /></Field><div className="two-col"><Field label="Phone number"><input value={data.complainantPhone} onChange={e => update('complainantPhone', e.target.value)} placeholder="10-digit phone number" /></Field><Field label="Email address"><input type="email" value={data.complainantEmail} onChange={e => update('complainantEmail', e.target.value)} placeholder="name@example.com" /></Field></div></div><div className="form-section"><h3>Opposite party details</h3><Field label="Seller / company name"><input value={data.oppositeName} onChange={e => update('oppositeName', e.target.value)} placeholder="e.g. Amazon Seller Services Pvt. Ltd." /></Field><Field label="Complete registered / branch address"><textarea value={data.oppositeAddress} onChange={e => update('oppositeAddress', e.target.value)} placeholder="Registered office or branch address" /></Field><div className="two-col"><Field label="Phone number"><input value={data.oppositePhone} onChange={e => update('oppositePhone', e.target.value)} placeholder="Company phone number" /></Field><Field label="Email address"><input type="email" value={data.oppositeEmail} onChange={e => update('oppositeEmail', e.target.value)} placeholder="support@example.com" /></Field></div></div><div className="form-section"><h3>Transaction and cause of action</h3><Field label="Product / service name"><input value={data.productName} onChange={e => update('productName', e.target.value)} placeholder="Exact product or service name" /></Field><div className="two-col"><Field label="Transaction / incident date"><input type="date" value={data.incidentDate} onChange={e => update('incidentDate', e.target.value)} /></Field><Field label="Amount paid (₹)"><input type="number" value={data.value} onChange={e => update('value', e.target.value)} placeholder="50000" /></Field></div><Field label="Invoice / order number"><input value={data.invoiceNumber} onChange={e => update('invoiceNumber', e.target.value)} placeholder="Invoice or order reference" /></Field><Field label="Nature of complaint"><select value={data.nature} onChange={e => update('nature', e.target.value)}><option value="defective product">Defective product</option><option value="deficient service">Deficient service</option><option value="unfair trade practice">Unfair trade practice</option><option value="e-commerce issue">E-commerce issue</option><option value="insurance">Insurance</option><option value="real estate">Real estate</option><option value="other">Other</option></select></Field><Field label="Defect / deficiency description"><textarea value={data.defectDescription} onChange={e => update('defectDescription', e.target.value)} placeholder="Describe exactly what was defective or what service was not provided, including dates and impact." /></Field><Field label="Customer support ticket numbers (optional)"><input value={data.ticketNumbers} onChange={e => update('ticketNumbers', e.target.value)} placeholder="e.g. Ticket #12345, Return request #67890" /></Field></div><div className="form-section"><h3>Relief sought</h3><div className="two-col"><Field label="Mental agony / harassment compensation (₹)"><input type="number" value={data.mentalAgony} onChange={e => update('mentalAgony', e.target.value)} placeholder="30000" /></Field><Field label="Litigation costs (₹)"><input type="number" value={data.litigationCosts} onChange={e => update('litigationCosts', e.target.value)} placeholder="10000" /></Field></div><Field label="Did you complain to the seller already?"><select value={data.contacted} onChange={e => update('contacted', e.target.value)}><option value="yes">Yes, but there was no resolution</option><option value="no">No</option></select></Field></div><div className="form-section"><h3>Jurisdiction and evidence</h3><Field label="Jurisdiction: where should this be filed?"><select value={data.forumBasis} onChange={e => update('forumBasis', e.target.value)}><option value="residence">Where I live</option><option value="opposite">Where the seller / company has an office</option></select></Field><Field label="City / district for filing"><input value={data.place} onChange={e => update('place', e.target.value)} placeholder="e.g. Vijayawada" /></Field><div className="check-grid">{['Invoice / receipt', 'Payment receipt / bank statement', 'Warranty card', 'Customer support emails / chat logs', 'Photos / videos', 'Written complaint to seller', 'Other document'].map(item => <label className="check" key={item}><input type="checkbox" checked={data.evidence.includes(item)} onChange={() => toggle(item)} /><span>{item}</span></label>)}</div></div><FormActions onBack={onBack} onNext={onNext} /></section> }
-function FormActions({ onBack, onNext }) { return <div className="actions"><button type="button" className="back-link" onClick={onBack}>← Back</button><button type="submit" className="primary">Review draft <span>→</span></button></div> }
-function Review({ result, setResult, onBack, onDownload }) { const isRTI = result.type === 'rti'; const d = result.data; return <section className="page review-page"><div className="eyebrow">Almost ready</div><h2>Review your draft</h2><p className="muted">Check the details below. You can go back and edit anything before downloading.</p><div className="review-card"><div className="review-heading"><span>{isRTI ? 'RTI APPLICATION' : 'CONSUMER COMPLAINT'}</span><span className="status">DRAFT</span></div>{isRTI ? <><h3>To: The Public Information Officer</h3><p>{result.pio.officeTemplate.replace('{state}', d.state)}</p><h3>Subject</h3><p>Request for information about {d.subject || 'the matter described below'}</p><h3>Information requested</h3><p>{d.information || 'Your information request will appear here.'}</p><h3>Applicant</h3><p>{d.name || 'Your name'} · {d.address || 'Your address'}</p></> : <><h3>Before the {result.forum.forum}</h3><p><b>{d.name || 'Complainant'}</b> v. <b>{d.oppositeName || 'Opposite party'}</b></p><h3>Claim value</h3><p>{formatINR(d.value)} · {result.forum.shortName}</p><h3>Nature of complaint</h3><p>{d.nature}</p><h3>Relief sought</h3><p>Refund / replacement and compensation of {formatINR(d.compensation)} for the loss and inconvenience caused.</p></>}</div><div className="actions"><button className="back-link" onClick={onBack}>← Edit answers</button><button className="primary" onClick={onDownload}>Download draft <span>↓</span></button></div></section> }
-function EnhancedReview({ result, resumeCode, onBack, onDownload }) { const isRTI = result.type === 'rti'; const draft = isRTI ? rtiText(result.data, result.pio) : cleanGeneratedDraft(consumerText(result.data, result.forum)); function downloadText() { const blob = new Blob([draft], { type: 'text/plain;charset=utf-8' }); const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = `adhikar-${result.type}-draft.txt`; link.click(); URL.revokeObjectURL(url) } async function copyText() { await navigator.clipboard.writeText(draft) } return <section className="page review-page"><div className="eyebrow">Almost ready</div><h2>Review your draft</h2><p className="muted">Your complete draft includes the structured parties, cause of action, jurisdiction, relief, verification, and annexures.</p>{resumeCode && <p className="resume-code">Resume code: <strong>{resumeCode}</strong><br/><small>Save this code to come back to this draft later.</small></p>}{!isRTI && <p className="notice">Notice: The complaint number is generated only by the official e-Daakhil portal after final online submission and fee payment. It is not included in this draft.</p>}<pre className="draft-preview">{draft}</pre><div className="actions"><button className="back-link" onClick={onBack}>← Edit answers</button><div className="review-actions"><button className="secondary" onClick={copyText}>Copy text</button><button className="secondary" onClick={downloadText}>Download .txt</button><button className="primary" onClick={onDownload}>Download .pdf</button></div></div></section> }
-function Output({ result, onHome }) { const isRTI = result.type === 'rti'; async function downloadAgain() { const title = isRTI ? 'RTI APPLICATION' : 'CONSUMER COMPLAINT'; const content = isRTI ? rtiText(result.data, result.pio) : consumerText(result.data, result.forum); const response = await fetch('/api/pdf', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title, content }) }); const blob = await response.blob(); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `adhikar-${result.type}.pdf`; a.click(); URL.revokeObjectURL(url) } return <section className="page output-page"><div className="success-mark">✓</div><div className="eyebrow">Your draft is ready</div><h2>One clear next step.</h2><p className="lead">Your {isRTI ? 'RTI application' : 'consumer complaint'} has been downloaded. Use this checklist before you file.</p><button className="primary wide" onClick={downloadAgain}>↓ Download again</button><div className="next-card"><h3>{isRTI ? 'File your RTI application' : 'File through e-Daakhil'}</h3>{isRTI ? <><p>Send it to <b>{result.pio.officeTemplate.replace('{state}', result.data.state)}</b>. Pay the ₹10 application fee by postal order / IPO or online where available.</p><p className="note">The office should respond within 30 days. If there is no response, you can file a First Appeal.</p></> : <><p>Go to <a href="https://edaakhil.nic.in" target="_blank" rel="noreferrer">edaakhil.nic.in ↗</a>. Select the {result.forum.shortName}; your complaint details map to the parties, facts and relief sections in the draft.</p><p className="note">Keep your invoice, prior complaint and evidence ready to upload.</p></>}</div><div className="checklist"><h3>Before you submit</h3><p>□ Read every name, date and amount once</p><p>□ Attach copies of your supporting documents</p><p>□ Keep one copy and proof of submission</p></div><button className="back-link" onClick={onHome}>Start another draft →</button></section> }
-function Next({ onBack }) { return <section className="page info-page"><div className="eyebrow">What happens next</div><h2>You have more options than you think.</h2><div className="info-block"><span>01</span><div><h3>RTI: no response?</h3><p>Wait 30 days from delivery. If the Public Information Officer does not respond, or the answer is incomplete, file a First Appeal with the senior officer named by the public authority.</p></div></div><div className="info-block"><span>02</span><div><h3>Consumer complaint filed?</h3><p>The commission will check the complaint, notify the opposite party, and schedule a hearing. Keep your originals safe and attend on the date given.</p></div></div><div className="info-block"><span>03</span><div><h3>Keep your record</h3><p>Save the downloaded draft, attachments, postal receipts and every message. A simple timeline of events can make your case much easier to follow.</p></div></div><button className="back-link" onClick={onBack}>← Back to Adhikar</button></section> }
-function rtiText(d, pio) { return `To,\nThe Public Information Officer\n${pio.officeTemplate.replace('{state}', d.state)}\n\nSubject: Request for information about ${d.subject || '[subject]'}\n\nApplicant: ${d.name || '[name]'}\nAddress: ${d.address || '[address]'}\nContact: ${d.contact || '[phone/email]'}\n\nInformation requested:\n1. ${d.information || '[specific information requested]'}\n${d.period ? `Time period: ${d.period}` : ''}\n\nI am a citizen of India. I have enclosed the prescribed application fee of Rs. 10 by postal order/IPO, or will pay it online where available.\n\nDate: ${new Date().toLocaleDateString('en-IN')}\nSignature: ____________________` }
+function LegacyHome({ language, begin }) {
+  return (
+    <section className="hero page">
+      <div className="eyebrow">A simpler way to speak up</div>
+      <h1>
+        Know your rights.
+        <br />
+        <em>Take the next step.</em>
+      </h1>
+      <p className="lead">
+        Answer a few simple questions. Get a ready-to-file draft and clear
+        instructions for what to do next.
+      </p>
+      <div className="choice-grid">
+        <Choice
+          number="01"
+          icon="⌁"
+          title="Government office isn’t responding / I want information"
+          detail="Draft an RTI application under the RTI Act, 2005."
+          onClick={() => begin("rti")}
+        />
+        <Choice
+          number="02"
+          icon="□"
+          title="A company or seller has wronged me"
+          detail="Prepare a consumer complaint for e-Daakhil."
+          onClick={() => begin("consumer")}
+        />
+        <Choice
+          number="03"
+          icon="?"
+          title="I'm not sure where to start"
+          detail="Three quick questions will point you in the right direction."
+          onClick={() => begin("triage")}
+        />
+      </div>
+      <div className="trust-row">
+        <span>⏱ {text(language, "About 5 minutes")}</span>
+        <span>▣ {text(language, "No account needed")}</span>
+        <span>◌ {text(language, "Multiple languages")}</span>
+      </div>
+    </section>
+  );
+}
+function Choice({ number, icon, title, detail, onClick }) {
+  return (
+    <button className="choice" onClick={onClick}>
+      <span className="choice-top">
+        <span>{number}</span>
+        <b>{icon}</b>
+      </span>
+      <strong>{title}</strong>
+      <small>{detail}</small>
+      <span className="arrow">↗</span>
+    </button>
+  );
+}
+function Triage({ step, route }) {
+  const questions = [
+    [
+      "Where is the problem?",
+      [
+        ["government", "A government office or public service"],
+        ["company", "A shop, company, builder or insurer"],
+      ],
+    ],
+    [
+      "What do you need?",
+      [
+        ["information", "Information or an official record"],
+        ["remedy", "A refund, repair or compensation"],
+      ],
+    ],
+    [
+      "Which sounds closer?",
+      [
+        ["government", "I want transparency from a public authority"],
+        ["company", "I want a company to fix what went wrong"],
+      ],
+    ],
+  ];
+  const q = questions[step];
+  return (
+    <section className="page form-page">
+      <Progress current={step + 1} total={3} />
+      <div className="eyebrow">Quick check</div>
+      <h2>{q[0]}</h2>
+      <div className="answer-list">
+        {q[1].map(([value, label]) => (
+          <button className="answer" key={value} onClick={() => route(value)}>
+            {label}
+            <span>↗</span>
+          </button>
+        ))}
+      </div>
+      <button
+        className="back-link"
+        onClick={() => (step ? route("") : window.location.reload())}
+      >
+        ← Back
+      </button>
+    </section>
+  );
+}
+function Progress({ current, total }) {
+  return (
+    <div className="progress">
+      <span>
+        STEP {current} OF {total}
+      </span>
+      <div>
+        <i style={{ width: `${(current / total) * 100}%` }} />
+      </div>
+    </div>
+  );
+}
+function Field({ label, children, hint }) {
+  return (
+    <label className="field">
+      <span>{label}</span>
+      {children}
+      {hint && <small>{hint}</small>}
+    </label>
+  );
+}
+function LegacyRTI({ data, setData, onBack, onNext }) {
+  const update = (key, value) => setData({ ...data, [key]: value });
+  return (
+    <section className="page form-page">
+      <Progress current={1} total={2} />
+      <div className="eyebrow">RTI application</div>
+      <h2>Tell us what information you need.</h2>
+      <p className="muted">
+        We’ll address your application to the most likely Public Information
+        Officer.
+      </p>
+      <div className="form-section">
+        <h3>Your details</h3>
+        <Field label="Full name">
+          <input
+            value={data.name}
+            onChange={(e) => update("name", e.target.value)}
+            placeholder="e.g. Meena Sharma"
+          />
+        </Field>
+        <Field label="Address for reply">
+          <textarea
+            value={data.address}
+            onChange={(e) => update("address", e.target.value)}
+            placeholder="House number, street, city, PIN code"
+          />
+        </Field>
+        <Field label="Phone or email">
+          <input
+            value={data.contact}
+            onChange={(e) => update("contact", e.target.value)}
+            placeholder="How should the office contact you?"
+          />
+        </Field>
+      </div>
+      <div className="form-section">
+        <h3>The request</h3>
+        <Field label="Level of government">
+          <select
+            value={data.level}
+            onChange={(e) => update("level", e.target.value)}
+          >
+            <option>Central</option>
+            <option>State</option>
+            <option>Local body</option>
+          </select>
+        </Field>
+        {data.level === "State" && (
+          <Field label="State">
+            <select
+              value={data.state}
+              onChange={(e) => update("state", e.target.value)}
+            >
+              {states.map((state) => (
+                <option key={state}>{state}</option>
+              ))}
+            </select>
+          </Field>
+        )}
+        <Field label="Department or subject">
+          <input
+            value={data.subject}
+            onChange={(e) => update("subject", e.target.value)}
+            placeholder="e.g. ration card delay, road repair funds"
+          />
+        </Field>
+        <Field
+          label="What information are you requesting?"
+          hint="Ask for existing records, documents or status. Avoid asking the officer to explain or take an action."
+        >
+          <textarea
+            value={data.information}
+            onChange={(e) => update("information", e.target.value)}
+            placeholder="Please provide the current status of my ration card application and copies of the relevant file notes."
+          />
+        </Field>
+        <Field label="Time period (optional)">
+          <input
+            value={data.period}
+            onChange={(e) => update("period", e.target.value)}
+            placeholder="e.g. January 2024 to December 2024"
+          />
+        </Field>
+      </div>
+      <FormActions onBack={onBack} onNext={onNext} />
+    </section>
+  );
+}
+function AddressFields({ value, onChange, prefix }) {
+  const [lookup, setLookup] = useState({ loading: false, error: "" });
+  const labels = {
+    house: "House / Flat / Door No.",
+    street: "Street / Area / Locality",
+    city: "City / District",
+    state: "State",
+    pin: "PIN Code",
+  };
+  async function lookupPin(pin) {
+    if (!/^\d{6}$/.test(pin)) {
+      setLookup({
+        loading: false,
+        error: pin ? "Enter a valid 6-digit PIN code." : "",
+      });
+      return;
+    }
+    setLookup({ loading: true, error: "" });
+    try {
+      const response = await fetch(
+        `https://api.postalpincode.in/pincode/${pin}`,
+      );
+      if (!response.ok) throw new Error("Network request failed");
+      const result = await response.json();
+      const postOffice = result?.[0]?.PostOffice?.[0];
+      if (result?.[0]?.Status !== "Success" || !postOffice)
+        throw new Error("PIN code was not found");
+      onChange({
+        ...value,
+        pin,
+        city: postOffice.District || value.city,
+        state: postOffice.State || value.state,
+      });
+      setLookup({ loading: false, error: "" });
+    } catch {
+      setLookup({
+        loading: false,
+        error:
+          "Could not find this PIN. Check it or enter the address manually.",
+      });
+    }
+  }
+  return (
+    <div className="address-fields">
+      {addressFields.map((field) => (
+        <Field
+          key={field}
+          label={labels[field]}
+          hint={
+            field === "pin"
+              ? lookup.loading
+                ? "Looking up address..."
+                : lookup.error || "Enter 6 digits to auto-fill city and state."
+              : undefined
+          }
+        >
+          <input
+            value={value[field] || ""}
+            maxLength={field === "pin" ? 6 : undefined}
+            inputMode={field === "pin" ? "numeric" : undefined}
+            pattern={field === "pin" ? "[0-9]{6}" : undefined}
+            required
+            onChange={(event) => {
+              const next =
+                field === "pin"
+                  ? event.target.value.replace(/\D/g, "")
+                  : event.target.value;
+              onChange(
+                field === "pin" && !next
+                  ? { ...value, pin: "", city: "", state: "" }
+                  : { ...value, [field]: next },
+              );
+              if (field === "pin") lookupPin(next);
+            }}
+            placeholder={field === "pin" ? "6-digit PIN code" : labels[field]}
+          />
+        </Field>
+      ))}
+    </div>
+  );
+}
+function StructuredConsumer({ data, setData, onBack, onNext }) {
+  const update = (key, value) => setData({ ...data, [key]: value });
+  const updateAddress = (key, value) => update(key, value);
+  const toggle = (item) =>
+    update(
+      "evidence",
+      data.evidence.includes(item)
+        ? data.evidence.filter((x) => x !== item)
+        : [...data.evidence, item],
+    );
+  const submit = (event) => {
+    event.preventDefault();
+    if (!event.currentTarget.reportValidity()) return;
+    if (!validateConsumer(data)) return;
+    onNext();
+  };
+  return (
+    <form className="page form-page" onSubmit={submit} noValidate>
+      <Progress current={1} total={2} />
+      <div className="eyebrow">Consumer complaint</div>
+      <h2>Tell us what went wrong.</h2>
+      <p className="muted">
+        Required fields are marked by the browser. Both PIN codes must contain
+        exactly 6 digits.
+      </p>
+      <div className="form-section">
+        <h3>Complainant details</h3>
+        <Field label="Full name">
+          <input
+            required
+            value={data.name}
+            onChange={(e) => update("name", e.target.value)}
+            placeholder="e.g. Gopi"
+          />
+        </Field>
+        <AddressFields
+          value={data.complainantAddress}
+          onChange={(value) => updateAddress("complainantAddress", value)}
+          prefix="complainant"
+        />
+        <div className="two-col">
+          <Field label="Phone number">
+            <input
+              required
+              value={data.complainantPhone}
+              onChange={(e) => update("complainantPhone", e.target.value)}
+              placeholder="10-digit phone number"
+            />
+          </Field>
+          <Field label="Email address">
+            <input
+              required
+              type="email"
+              value={data.complainantEmail}
+              onChange={(e) => update("complainantEmail", e.target.value)}
+              placeholder="name@example.com"
+            />
+          </Field>
+        </div>
+      </div>
+      <div className="form-section">
+        <h3>Opposite party details</h3>
+        <Field label="Seller / company name">
+          <input
+            required
+            value={data.oppositeName}
+            onChange={(e) => update("oppositeName", e.target.value)}
+            placeholder="e.g. Amazon Seller Services Pvt. Ltd."
+          />
+        </Field>
+        <AddressFields
+          value={data.oppositeAddress}
+          onChange={(value) => updateAddress("oppositeAddress", value)}
+          prefix="opposite"
+        />
+        <div className="two-col">
+          <Field label="Phone number">
+            <input
+              required
+              value={data.oppositePhone}
+              onChange={(e) => update("oppositePhone", e.target.value)}
+              placeholder="Company phone number"
+            />
+          </Field>
+          <Field label="Email address">
+            <input
+              required
+              type="email"
+              value={data.oppositeEmail}
+              onChange={(e) => update("oppositeEmail", e.target.value)}
+              placeholder="support@example.com"
+            />
+          </Field>
+        </div>
+      </div>
+      <div className="form-section">
+        <h3>Transaction and cause of action</h3>
+        <Field label="Product / service name">
+          <input
+            required
+            value={data.productName}
+            onChange={(e) => update("productName", e.target.value)}
+            placeholder="Exact product or service name"
+          />
+        </Field>
+        <div className="two-col">
+          <Field label="Transaction / incident date">
+            <input
+              required
+              type="date"
+              value={data.incidentDate}
+              onChange={(e) => update("incidentDate", e.target.value)}
+            />
+          </Field>
+          <Field label="Amount paid (₹)">
+            <input
+              required
+              min="1"
+              type="number"
+              value={data.value}
+              onChange={(e) => update("value", e.target.value)}
+              placeholder="50000"
+            />
+          </Field>
+        </div>
+        <Field label="Invoice / order number">
+          <input
+            required
+            value={data.invoiceNumber}
+            onChange={(e) => update("invoiceNumber", e.target.value)}
+            placeholder="Invoice or order reference"
+          />
+        </Field>
+        <Field label="Nature of complaint">
+          <select
+            required
+            value={data.nature}
+            onChange={(e) => update("nature", e.target.value)}
+          >
+            <option value="defective product">Defective product</option>
+            <option value="deficient service">Deficient service</option>
+            <option value="unfair trade practice">Unfair trade practice</option>
+            <option value="e-commerce issue">E-commerce issue</option>
+            <option value="insurance">Insurance</option>
+            <option value="real estate">Real estate</option>
+            <option value="other">Other</option>
+          </select>
+        </Field>
+        <Field label="Defect / deficiency description">
+          <textarea
+            required
+            minLength={20}
+            value={data.defectDescription}
+            onChange={(e) => update("defectDescription", e.target.value)}
+            placeholder="Describe the defect, deficiency, dates, and impact in complete sentences."
+          />
+        </Field>
+        <Field label="Customer support ticket numbers (optional)">
+          <input
+            value={data.ticketNumbers}
+            onChange={(e) => update("ticketNumbers", e.target.value)}
+            placeholder="e.g. Ticket #12345"
+          />
+        </Field>
+      </div>
+      <div className="form-section">
+        <h3>Relief sought</h3>
+        <div className="two-col">
+          <Field label="Mental agony / harassment compensation (₹)">
+            <input
+              required
+              min="0"
+              type="number"
+              value={data.mentalAgony}
+              onChange={(e) => update("mentalAgony", e.target.value)}
+              placeholder="30000"
+            />
+          </Field>
+          <Field label="Litigation costs (₹)">
+            <input
+              required
+              min="0"
+              type="number"
+              value={data.litigationCosts}
+              onChange={(e) => update("litigationCosts", e.target.value)}
+              placeholder="10000"
+            />
+          </Field>
+        </div>
+        <Field label="Did you complain to the seller already?">
+          <select
+            required
+            value={data.contacted}
+            onChange={(e) => update("contacted", e.target.value)}
+          >
+            <option value="yes">Yes, but there was no resolution</option>
+            <option value="no">No</option>
+          </select>
+        </Field>
+      </div>
+      <div className="form-section">
+        <h3>Jurisdiction and evidence</h3>
+        <Field label="Jurisdiction: where should this be filed?">
+          <select
+            required
+            value={data.forumBasis}
+            onChange={(e) => update("forumBasis", e.target.value)}
+          >
+            <option value="residence">Where I live</option>
+            <option value="opposite">
+              Where the seller / company has an office
+            </option>
+          </select>
+        </Field>
+        <Field label="City / district for filing">
+          <input
+            required
+            value={data.place}
+            onChange={(e) => update("place", e.target.value)}
+            placeholder="e.g. Vijayawada"
+          />
+        </Field>
+        <div className="check-grid">
+          {[
+            "Invoice / receipt",
+            "Payment receipt / bank statement",
+            "Warranty card",
+            "Customer support emails / chat logs",
+            "Photos / videos",
+            "Written complaint to seller",
+            "Other document",
+          ].map((item) => (
+            <label className="check" key={item}>
+              <input
+                type="checkbox"
+                checked={data.evidence.includes(item)}
+                onChange={() => toggle(item)}
+              />
+              <span>{item}</span>
+            </label>
+          ))}
+        </div>
+      </div>
+      <FormActions onBack={onBack} onNext={onNext} />
+    </form>
+  );
+}
+function Consumer({ data, setData, onBack, onNext }) {
+  const update = (key, value) => setData({ ...data, [key]: value });
+  const toggle = (item) =>
+    update(
+      "evidence",
+      data.evidence.includes(item)
+        ? data.evidence.filter((x) => x !== item)
+        : [...data.evidence, item],
+    );
+  return (
+    <section className="page form-page">
+      <Progress current={1} total={2} />
+      <div className="eyebrow">Consumer complaint</div>
+      <h2>Tell us what went wrong.</h2>
+      <p className="muted">
+        Your answers will become a clear complaint for the consumer commission.
+      </p>
+      <div className="form-section">
+        <h3>Complainant details</h3>
+        <Field label="Full name">
+          <input
+            value={data.name}
+            onChange={(e) => update("name", e.target.value)}
+            placeholder="e.g. Gopi"
+          />
+        </Field>
+        <Field label="Complete address">
+          <textarea
+            value={data.address}
+            onChange={(e) => update("address", e.target.value)}
+            placeholder="House number, street, city, state, PIN code"
+          />
+        </Field>
+        <div className="two-col">
+          <Field label="Phone number">
+            <input
+              value={data.complainantPhone}
+              onChange={(e) => update("complainantPhone", e.target.value)}
+              placeholder="10-digit phone number"
+            />
+          </Field>
+          <Field label="Email address">
+            <input
+              type="email"
+              value={data.complainantEmail}
+              onChange={(e) => update("complainantEmail", e.target.value)}
+              placeholder="name@example.com"
+            />
+          </Field>
+        </div>
+      </div>
+      <div className="form-section">
+        <h3>Opposite party details</h3>
+        <Field label="Seller / company name">
+          <input
+            value={data.oppositeName}
+            onChange={(e) => update("oppositeName", e.target.value)}
+            placeholder="e.g. Amazon Seller Services Pvt. Ltd."
+          />
+        </Field>
+        <Field label="Complete registered / branch address">
+          <textarea
+            value={data.oppositeAddress}
+            onChange={(e) => update("oppositeAddress", e.target.value)}
+            placeholder="Registered office or branch address"
+          />
+        </Field>
+        <div className="two-col">
+          <Field label="Phone number">
+            <input
+              value={data.oppositePhone}
+              onChange={(e) => update("oppositePhone", e.target.value)}
+              placeholder="Company phone number"
+            />
+          </Field>
+          <Field label="Email address">
+            <input
+              type="email"
+              value={data.oppositeEmail}
+              onChange={(e) => update("oppositeEmail", e.target.value)}
+              placeholder="support@example.com"
+            />
+          </Field>
+        </div>
+      </div>
+      <div className="form-section">
+        <h3>Transaction and cause of action</h3>
+        <Field label="Product / service name">
+          <input
+            value={data.productName}
+            onChange={(e) => update("productName", e.target.value)}
+            placeholder="Exact product or service name"
+          />
+        </Field>
+        <div className="two-col">
+          <Field label="Transaction / incident date">
+            <input
+              type="date"
+              value={data.incidentDate}
+              onChange={(e) => update("incidentDate", e.target.value)}
+            />
+          </Field>
+          <Field label="Amount paid (₹)">
+            <input
+              type="number"
+              value={data.value}
+              onChange={(e) => update("value", e.target.value)}
+              placeholder="50000"
+            />
+          </Field>
+        </div>
+        <Field label="Invoice / order number">
+          <input
+            value={data.invoiceNumber}
+            onChange={(e) => update("invoiceNumber", e.target.value)}
+            placeholder="Invoice or order reference"
+          />
+        </Field>
+        <Field label="Nature of complaint">
+          <select
+            value={data.nature}
+            onChange={(e) => update("nature", e.target.value)}
+          >
+            <option value="defective product">Defective product</option>
+            <option value="deficient service">Deficient service</option>
+            <option value="unfair trade practice">Unfair trade practice</option>
+            <option value="e-commerce issue">E-commerce issue</option>
+            <option value="insurance">Insurance</option>
+            <option value="real estate">Real estate</option>
+            <option value="other">Other</option>
+          </select>
+        </Field>
+        <Field label="Defect / deficiency description">
+          <textarea
+            value={data.defectDescription}
+            onChange={(e) => update("defectDescription", e.target.value)}
+            placeholder="Describe exactly what was defective or what service was not provided, including dates and impact."
+          />
+        </Field>
+        <Field label="Customer support ticket numbers (optional)">
+          <input
+            value={data.ticketNumbers}
+            onChange={(e) => update("ticketNumbers", e.target.value)}
+            placeholder="e.g. Ticket #12345, Return request #67890"
+          />
+        </Field>
+      </div>
+      <div className="form-section">
+        <h3>Relief sought</h3>
+        <div className="two-col">
+          <Field label="Mental agony / harassment compensation (₹)">
+            <input
+              type="number"
+              value={data.mentalAgony}
+              onChange={(e) => update("mentalAgony", e.target.value)}
+              placeholder="30000"
+            />
+          </Field>
+          <Field label="Litigation costs (₹)">
+            <input
+              type="number"
+              value={data.litigationCosts}
+              onChange={(e) => update("litigationCosts", e.target.value)}
+              placeholder="10000"
+            />
+          </Field>
+        </div>
+        <Field label="Did you complain to the seller already?">
+          <select
+            value={data.contacted}
+            onChange={(e) => update("contacted", e.target.value)}
+          >
+            <option value="yes">Yes, but there was no resolution</option>
+            <option value="no">No</option>
+          </select>
+        </Field>
+      </div>
+      <div className="form-section">
+        <h3>Jurisdiction and evidence</h3>
+        <Field label="Jurisdiction: where should this be filed?">
+          <select
+            value={data.forumBasis}
+            onChange={(e) => update("forumBasis", e.target.value)}
+          >
+            <option value="residence">Where I live</option>
+            <option value="opposite">
+              Where the seller / company has an office
+            </option>
+          </select>
+        </Field>
+        <Field label="City / district for filing">
+          <input
+            value={data.place}
+            onChange={(e) => update("place", e.target.value)}
+            placeholder="e.g. Vijayawada"
+          />
+        </Field>
+        <div className="check-grid">
+          {[
+            "Invoice / receipt",
+            "Payment receipt / bank statement",
+            "Warranty card",
+            "Customer support emails / chat logs",
+            "Photos / videos",
+            "Written complaint to seller",
+            "Other document",
+          ].map((item) => (
+            <label className="check" key={item}>
+              <input
+                type="checkbox"
+                checked={data.evidence.includes(item)}
+                onChange={() => toggle(item)}
+              />
+              <span>{item}</span>
+            </label>
+          ))}
+        </div>
+      </div>
+      <FormActions onBack={onBack} onNext={onNext} />
+    </section>
+  );
+}
+function FormActions({ onBack, onNext }) {
+  return (
+    <div className="actions">
+      <button type="button" className="back-link" onClick={onBack}>
+        ← Back
+      </button>
+      <button type="submit" className="primary">
+        Review draft <span>→</span>
+      </button>
+    </div>
+  );
+}
+function Review({ result, setResult, onBack, onDownload }) {
+  const isRTI = result.type === "rti";
+  const d = result.data;
+  return (
+    <section className="page review-page">
+      <div className="eyebrow">Almost ready</div>
+      <h2>Review your draft</h2>
+      <p className="muted">
+        Check the details below. You can go back and edit anything before
+        downloading.
+      </p>
+      <div className="review-card">
+        <div className="review-heading">
+          <span>{isRTI ? "RTI APPLICATION" : "CONSUMER COMPLAINT"}</span>
+          <span className="status">DRAFT</span>
+        </div>
+        {isRTI ? (
+          <>
+            <h3>To: The Public Information Officer</h3>
+            <p>{result.pio.officeTemplate.replace("{state}", d.state)}</p>
+            <h3>Subject</h3>
+            <p>
+              Request for information about{" "}
+              {d.subject || "the matter described below"}
+            </p>
+            <h3>Information requested</h3>
+            <p>
+              {d.information || "Your information request will appear here."}
+            </p>
+            <h3>Applicant</h3>
+            <p>
+              {d.name || "Your name"} · {d.address || "Your address"}
+            </p>
+          </>
+        ) : (
+          <>
+            <h3>Before the {result.forum.forum}</h3>
+            <p>
+              <b>{d.name || "Complainant"}</b> v.{" "}
+              <b>{d.oppositeName || "Opposite party"}</b>
+            </p>
+            <h3>Claim value</h3>
+            <p>
+              {formatINR(d.value)} · {result.forum.shortName}
+            </p>
+            <h3>Nature of complaint</h3>
+            <p>{d.nature}</p>
+            <h3>Relief sought</h3>
+            <p>
+              Refund / replacement and compensation of{" "}
+              {formatINR(d.compensation)} for the loss and inconvenience caused.
+            </p>
+          </>
+        )}
+      </div>
+      <div className="actions">
+        <button className="back-link" onClick={onBack}>
+          ← Edit answers
+        </button>
+        <button className="primary" onClick={onDownload}>
+          Download draft <span>↓</span>
+        </button>
+      </div>
+    </section>
+  );
+}
+function EnhancedReview({ result, resumeCode, onBack, onDownload }) {
+  const isRTI = result.type === "rti";
+  const draft = isRTI
+    ? rtiText(result.data, result.pio)
+    : cleanGeneratedDraft(consumerText(result.data, result.forum));
+  function downloadText() {
+    const blob = new Blob([draft], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `adhikar-${result.type}-draft.txt`;
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+  async function copyText() {
+    await navigator.clipboard.writeText(draft);
+  }
+  return (
+    <section className="page review-page">
+      <div className="eyebrow">Almost ready</div>
+      <h2>Review your draft</h2>
+      <p className="muted">
+        Your complete draft includes the structured parties, cause of action,
+        jurisdiction, relief, verification, and annexures.
+      </p>
+      {resumeCode && (
+        <p className="resume-code">
+          Resume code: <strong>{resumeCode}</strong>
+          <br />
+          <small>Save this code to come back to this draft later.</small>
+        </p>
+      )}
+      {!isRTI && (
+        <p className="notice">
+          Notice: The complaint number is generated only by the official
+          e-Daakhil portal after final online submission and fee payment. It is
+          not included in this draft.
+        </p>
+      )}
+      <pre className="draft-preview">{draft}</pre>
+      <div className="actions">
+        <button className="back-link" onClick={onBack}>
+          ← Edit answers
+        </button>
+        <div className="review-actions">
+          <button className="secondary" onClick={copyText}>
+            Copy text
+          </button>
+          <button className="secondary" onClick={downloadText}>
+            Download .txt
+          </button>
+          <button className="primary" onClick={onDownload}>
+            Download .pdf
+          </button>
+        </div>
+      </div>
+    </section>
+  );
+}
+function Output({ result, onHome }) {
+  const isRTI = result.type === "rti";
+  async function downloadAgain() {
+    const title = isRTI ? "RTI APPLICATION" : "CONSUMER COMPLAINT";
+    const content = isRTI
+      ? rtiText(result.data, result.pio)
+      : consumerText(result.data, result.forum);
+    const response = await fetch("/api/pdf", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title, content }),
+    });
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `adhikar-${result.type}.pdf`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+  return (
+    <section className="page output-page">
+      <div className="success-mark">✓</div>
+      <div className="eyebrow">Your draft is ready</div>
+      <h2>One clear next step.</h2>
+      <p className="lead">
+        Your {isRTI ? "RTI application" : "consumer complaint"} has been
+        downloaded. Use this checklist before you file.
+      </p>
+      <button className="primary wide" onClick={downloadAgain}>
+        ↓ Download again
+      </button>
+      <div className="next-card">
+        <h3>
+          {isRTI ? "File your RTI application" : "File through e-Daakhil"}
+        </h3>
+        {isRTI ? (
+          <>
+            <p>
+              Send it to{" "}
+              <b>
+                {result.pio.officeTemplate.replace(
+                  "{state}",
+                  result.data.state,
+                )}
+              </b>
+              . Pay the ₹10 application fee by postal order / IPO or online
+              where available.
+            </p>
+            <p className="note">
+              The office should respond within 30 days. If there is no response,
+              you can file a First Appeal.
+            </p>
+          </>
+        ) : (
+          <>
+            <p>
+              Go to{" "}
+              <a
+                href="https://edaakhil.nic.in"
+                target="_blank"
+                rel="noreferrer"
+              >
+                edaakhil.nic.in ↗
+              </a>
+              . Select the {result.forum.shortName}; your complaint details map
+              to the parties, facts and relief sections in the draft.
+            </p>
+            <p className="note">
+              Keep your invoice, prior complaint and evidence ready to upload.
+            </p>
+          </>
+        )}
+      </div>
+      <div className="checklist">
+        <h3>Before you submit</h3>
+        <p>□ Read every name, date and amount once</p>
+        <p>□ Attach copies of your supporting documents</p>
+        <p>□ Keep one copy and proof of submission</p>
+      </div>
+      <button className="back-link" onClick={onHome}>
+        Start another draft →
+      </button>
+    </section>
+  );
+}
+function Next({ onBack }) {
+  return (
+    <section className="page info-page">
+      <div className="eyebrow">What happens next</div>
+      <h2>You have more options than you think.</h2>
+      <div className="info-block">
+        <span>01</span>
+        <div>
+          <h3>RTI: no response?</h3>
+          <p>
+            Wait 30 days from delivery. If the Public Information Officer does
+            not respond, or the answer is incomplete, file a First Appeal with
+            the senior officer named by the public authority.
+          </p>
+        </div>
+      </div>
+      <div className="info-block">
+        <span>02</span>
+        <div>
+          <h3>Consumer complaint filed?</h3>
+          <p>
+            The commission will check the complaint, notify the opposite party,
+            and schedule a hearing. Keep your originals safe and attend on the
+            date given.
+          </p>
+        </div>
+      </div>
+      <div className="info-block">
+        <span>03</span>
+        <div>
+          <h3>Keep your record</h3>
+          <p>
+            Save the downloaded draft, attachments, postal receipts and every
+            message. A simple timeline of events can make your case much easier
+            to follow.
+          </p>
+        </div>
+      </div>
+      <button className="back-link" onClick={onBack}>
+        ← Back to Adhikar
+      </button>
+    </section>
+  );
+}
+function rtiText(d, pio) {
+  return `To,\nThe Public Information Officer\n${pio.officeTemplate.replace("{state}", d.state)}\n\nSubject: Request for information about ${d.subject || "[subject]"}\n\nApplicant: ${d.name || "[name]"}\nAddress: ${d.address || "[address]"}\nContact: ${d.contact || "[phone/email]"}\n\nInformation requested:\n1. ${d.information || "[specific information requested]"}\n${d.period ? `Time period: ${d.period}` : ""}\n\nI am a citizen of India. I have enclosed the prescribed application fee of Rs. 10 by postal order/IPO, or will pay it online where available.\n\nDate: ${new Date().toLocaleDateString("en-IN")}\nSignature: ____________________`;
+}
 function consumerText(d, forum) {
-    const evidence = getAnnexures(d)
-    const complaintNumberNote = ''
-    const optionalLine = (label, value) => value && String(value).trim() ? `${label}: ${String(value).trim()}` : ''
-    const complainantContact = [optionalLine('Phone', d.complainantPhone), optionalLine('Email', d.complainantEmail)].filter(Boolean).join('\n')
-        const oppositeContact = [optionalLine('Phone', d.oppositePhone), optionalLine('Email', d.oppositeEmail)].filter(Boolean).join('\n')
-    const jurisdictionBasis = d.forumBasis === 'opposite' ? `the Opposite Party has an office or branch at ${d.place || '[city/district]'}` : `the Complainant resides or works at ${d.place || '[city/district]'}`
-    const cause = `The Complainant purchased/engaged ${d.productName || '[product or service]'} from the Opposite Party on ${d.incidentDate || '[exact date]'} for a total consideration of ${formatINR(d.value)}${d.invoiceNumber ? ` vide Invoice/Order No. ${d.invoiceNumber}` : ''}. The grievance concerns ${d.nature || '[defect or deficiency]'}. ${d.defectDescription || '[Describe the defect, deficiency, delay, damage, or unfair practice in complete sentences, including the date it was noticed and the loss caused.]'}${d.ticketNumbers ? ` The Complainant contacted customer support under Ticket/Request No(s). ${d.ticketNumbers}, but the issue remained unresolved.` : ' The Complainant contacted customer support, but the issue remained unresolved.'}`
-    return `${complaintNumberNote}\n\nCONSUMER COMPLAINT NO. _______ OF ${new Date().getFullYear()}\n\nBEFORE THE ${forum.forum.toUpperCase()}\n\nIN THE MATTER OF:\n${d.name || '[COMPLAINANT NAME]'} ... Complainant\nVERSUS\n${d.oppositeName || '[OPPOSITE PARTY NAME]'} ... Opposite Party\n\nCOMPLAINT UNDER SECTION 35 OF THE CONSUMER PROTECTION ACT, 2019\n\n1. COMPLAINANT DETAILS\nName: ${d.name || '[full name]'}\nAddress: ${d.address || '[complete address with PIN code]'}\nPhone: ${d.complainantPhone || '[phone number]'}\nEmail: ${d.complainantEmail || '[email address]'}\n\n2. OPPOSITE PARTY DETAILS\nName: ${d.oppositeName || '[seller/company name]'}\nRegistered address: ${d.oppositeAddress || '[complete address with PIN code]'}\nPhone: ${d.oppositePhone || '[phone number]'}\nEmail: ${d.oppositeEmail || '[email address]'}\n\n3. FACTS AND CAUSE OF ACTION\n${cause}\n\nThe cause of action first arose on ${d.incidentDate || '[date]'} and continues because the Opposite Party has failed to provide an effective remedy. The conduct complained of amounts to ${d.nature || 'deficiency in service'} and, where applicable, unfair trade practice under the Consumer Protection Act, 2019.\n\n4. JURISDICTION\nThis Hon'ble Commission has territorial jurisdiction because ${jurisdictionBasis}. It has pecuniary jurisdiction because the value paid/consideration stated above falls within the statutory limit of the ${forum.shortName}. The applicable limits and filing requirements should be verified on the official portal before submission.\n\n5. RELIEF SOUGHT\nThe Complainant respectfully prays that this Hon'ble Commission may be pleased to:\na) Direct the Opposite Party to refund ${formatINR(d.value)} towards the product/service, or provide a replacement/remedy of equivalent value;\nb) Award ${formatINR(d.mentalAgony)} towards mental agony, harassment, inconvenience, and loss caused by the defect/deficiency;\nc) Award ${formatINR(d.litigationCosts)} towards reasonable litigation and filing costs;\nd) Grant any other relief that this Hon'ble Commission considers just and proper.\n\n6. LIST OF ANNEXURES / EVIDENCE\n${evidence.map((item, index) => `${index + 1}. ${item}`).join('\n')}\n\nVERIFICATION\nI, ${d.name || '[complainant name]'}, the Complainant above named, do hereby verify that the contents of paragraphs 1 to 6 are true and correct to the best of my knowledge and belief, and that no material fact has been concealed.\n\nPlace: ${d.place || '[city/district]'}\nDate: ${new Date().toLocaleDateString('en-IN')}\n\nSignature: ____________________\n${d.name || '[complainant name]'}\nComplainant`
+  const evidence = getAnnexures(d);
+  const complaintNumberNote = "";
+  const optionalLine = (label, value) =>
+    value && String(value).trim() ? `${label}: ${String(value).trim()}` : "";
+  const complainantContact = [
+    optionalLine("Phone", d.complainantPhone),
+    optionalLine("Email", d.complainantEmail),
+  ]
+    .filter(Boolean)
+    .join("\n");
+  const oppositeContact = [
+    optionalLine("Phone", d.oppositePhone),
+    optionalLine("Email", d.oppositeEmail),
+  ]
+    .filter(Boolean)
+    .join("\n");
+  const jurisdictionBasis =
+    d.forumBasis === "opposite"
+      ? `the Opposite Party has an office or branch at ${d.place || "[city/district]"}`
+      : `the Complainant resides or works at ${d.place || "[city/district]"}`;
+  const cause = `The Complainant purchased/engaged ${d.productName || "[product or service]"} from the Opposite Party on ${d.incidentDate || "[exact date]"} for a total consideration of ${formatINR(d.value)}${d.invoiceNumber ? ` vide Invoice/Order No. ${d.invoiceNumber}` : ""}. The grievance concerns ${d.nature || "[defect or deficiency]"}. ${d.defectDescription || "[Describe the defect, deficiency, delay, damage, or unfair practice in complete sentences, including the date it was noticed and the loss caused.]"}${d.ticketNumbers ? ` The Complainant contacted customer support under Ticket/Request No(s). ${d.ticketNumbers}, but the issue remained unresolved.` : " The Complainant contacted customer support, but the issue remained unresolved."}`;
+  return `${complaintNumberNote}\n\nCONSUMER COMPLAINT NO. _______ OF ${new Date().getFullYear()}\n\nBEFORE THE ${forum.forum.toUpperCase()}\n\nIN THE MATTER OF:\n${d.name || "[COMPLAINANT NAME]"} ... Complainant\nVERSUS\n${d.oppositeName || "[OPPOSITE PARTY NAME]"} ... Opposite Party\n\nCOMPLAINT UNDER SECTION 35 OF THE CONSUMER PROTECTION ACT, 2019\n\n1. COMPLAINANT DETAILS\nName: ${d.name || "[full name]"}\nAddress: ${d.address || "[complete address with PIN code]"}\nPhone: ${d.complainantPhone || "[phone number]"}\nEmail: ${d.complainantEmail || "[email address]"}\n\n2. OPPOSITE PARTY DETAILS\nName: ${d.oppositeName || "[seller/company name]"}\nRegistered address: ${d.oppositeAddress || "[complete address with PIN code]"}\nPhone: ${d.oppositePhone || "[phone number]"}\nEmail: ${d.oppositeEmail || "[email address]"}\n\n3. FACTS AND CAUSE OF ACTION\n${cause}\n\nThe cause of action first arose on ${d.incidentDate || "[date]"} and continues because the Opposite Party has failed to provide an effective remedy. The conduct complained of amounts to ${d.nature || "deficiency in service"} and, where applicable, unfair trade practice under the Consumer Protection Act, 2019.\n\n4. JURISDICTION\nThis Hon'ble Commission has territorial jurisdiction because ${jurisdictionBasis}. It has pecuniary jurisdiction because the value paid/consideration stated above falls within the statutory limit of the ${forum.shortName}. The applicable limits and filing requirements should be verified on the official portal before submission.\n\n5. RELIEF SOUGHT\nThe Complainant respectfully prays that this Hon'ble Commission may be pleased to:\na) Direct the Opposite Party to refund ${formatINR(d.value)} towards the product/service, or provide a replacement/remedy of equivalent value;\nb) Award ${formatINR(d.mentalAgony)} towards mental agony, harassment, inconvenience, and loss caused by the defect/deficiency;\nc) Award ${formatINR(d.litigationCosts)} towards reasonable litigation and filing costs;\nd) Grant any other relief that this Hon'ble Commission considers just and proper.\n\n6. LIST OF ANNEXURES / EVIDENCE\n${evidence.map((item, index) => `${index + 1}. ${item}`).join("\n")}\n\nVERIFICATION\nI, ${d.name || "[complainant name]"}, the Complainant above named, do hereby verify that the contents of paragraphs 1 to 6 are true and correct to the best of my knowledge and belief, and that no material fact has been concealed.\n\nPlace: ${d.place || "[city/district]"}\nDate: ${new Date().toLocaleDateString("en-IN")}\n\nSignature: ____________________\n${d.name || "[complainant name]"}\nComplainant`;
 }
 
-function StructuredRTI({data,setData,onBack,onNext}) {
-    const update = (key, value) => setData({...data, [key]: value})
-    const updateAddress = value => update('applicantAddress', value)
-    const submit = event => { event.preventDefault(); if (!event.currentTarget.reportValidity()) return; if (!data.applicantAddress.house || !data.applicantAddress.street || !data.applicantAddress.pin || !data.applicantAddress.city || !data.applicantAddress.state) { window.alert('Please complete every applicant address field, including a valid 6-digit PIN code.'); return } if (!data.name.trim()) { window.alert('Please enter the applicant name.'); return } if (!data.contact.trim()) { window.alert('Please enter a phone number or email address.'); return } if (!data.subject.trim() || !data.information.trim()) { window.alert('Please enter the department/subject and requested information.'); return } onNext() }
-    return <form className="page form-page" onSubmit={submit} noValidate><Progress current={1} total={2}/><div className="eyebrow">RTI application</div><h2>Tell us what information you need.</h2><p className="muted">Required fields are checked before your application is generated. Enter a valid 6-digit PIN to fill the city and state.</p><div className="form-section"><h3>Applicant details</h3><Field label="Full name"><input required value={data.name} onChange={e=>update('name',e.target.value)} placeholder="e.g. Meena Sharma"/></Field><AddressFields value={data.applicantAddress} onChange={updateAddress} prefix="applicant"/><Field label="Phone or email"><input required value={data.contact} onChange={e=>update('contact',e.target.value)} placeholder="How should the office contact you?"/></Field></div><div className="form-section"><h3>The request</h3><Field label="Level of government"><select required value={data.level} onChange={e=>update('level',e.target.value)}><option>Central</option><option>State</option><option>Local body</option></select></Field><Field label="Department or subject"><input required value={data.subject} onChange={e=>update('subject',e.target.value)} placeholder="e.g. ration card delay, road repair funds"/></Field><Field label="What information are you requesting?" hint="Ask for existing records, documents or status."><textarea required minLength={10} value={data.information} onChange={e=>update('information',e.target.value)} placeholder="Please provide the current status of my ration card application and copies of the relevant file notes."/></Field><Field label="Time period (optional)"><input value={data.period} onChange={e=>update('period',e.target.value)} placeholder="e.g. January 2024 to December 2024"/></Field></div><FormActions onBack={onBack} onNext={onNext}/></form>
+function StructuredRTI({ data, setData, onBack, onNext }) {
+  const update = (key, value) => setData({ ...data, [key]: value });
+  const updateAddress = (value) => update("applicantAddress", value);
+  const submit = (event) => {
+    event.preventDefault();
+    if (!event.currentTarget.reportValidity()) return;
+    if (
+      !data.applicantAddress.house ||
+      !data.applicantAddress.street ||
+      !data.applicantAddress.pin ||
+      !data.applicantAddress.city ||
+      !data.applicantAddress.state
+    ) {
+      window.alert(
+        "Please complete every applicant address field, including a valid 6-digit PIN code.",
+      );
+      return;
+    }
+    if (!data.name.trim()) {
+      window.alert("Please enter the applicant name.");
+      return;
+    }
+    if (!data.contact.trim()) {
+      window.alert("Please enter a phone number or email address.");
+      return;
+    }
+    if (!data.subject.trim() || !data.information.trim()) {
+      window.alert(
+        "Please enter the department/subject and requested information.",
+      );
+      return;
+    }
+    onNext();
+  };
+  return (
+    <form className="page form-page" onSubmit={submit} noValidate>
+      <Progress current={1} total={2} />
+      <div className="eyebrow">RTI application</div>
+      <h2>Tell us what information you need.</h2>
+      <p className="muted">
+        Required fields are checked before your application is generated. Enter
+        a valid 6-digit PIN to fill the city and state.
+      </p>
+      <div className="form-section">
+        <h3>Applicant details</h3>
+        <Field label="Full name">
+          <input
+            required
+            value={data.name}
+            onChange={(e) => update("name", e.target.value)}
+            placeholder="e.g. Meena Sharma"
+          />
+        </Field>
+        <AddressFields
+          value={data.applicantAddress}
+          onChange={updateAddress}
+          prefix="applicant"
+        />
+        <Field label="Phone or email">
+          <input
+            required
+            value={data.contact}
+            onChange={(e) => update("contact", e.target.value)}
+            placeholder="How should the office contact you?"
+          />
+        </Field>
+      </div>
+      <div className="form-section">
+        <h3>The request</h3>
+        <Field label="Level of government">
+          <select
+            required
+            value={data.level}
+            onChange={(e) => update("level", e.target.value)}
+          >
+            <option>Central</option>
+            <option>State</option>
+            <option>Local body</option>
+          </select>
+        </Field>
+        <Field label="Department or subject">
+          <input
+            required
+            value={data.subject}
+            onChange={(e) => update("subject", e.target.value)}
+            placeholder="e.g. ration card delay, road repair funds"
+          />
+        </Field>
+        <Field
+          label="What information are you requesting?"
+          hint="Ask for existing records, documents or status."
+        >
+          <textarea
+            required
+            minLength={10}
+            value={data.information}
+            onChange={(e) => update("information", e.target.value)}
+            placeholder="Please provide the current status of my ration card application and copies of the relevant file notes."
+          />
+        </Field>
+        <Field label="Time period (optional)">
+          <input
+            value={data.period}
+            onChange={(e) => update("period", e.target.value)}
+            placeholder="e.g. January 2024 to December 2024"
+          />
+        </Field>
+      </div>
+      <FormActions onBack={onBack} onNext={onNext} />
+    </form>
+  );
 }
 
-function LandingHome({ language, begin, onResume, resumeError }) { const [code, setCode] = useState(''); return <section className="hero page"><div className="eyebrow">A simpler way to speak up</div><h1>Know your rights.<br/><em>Take the next step.</em></h1><p className="lead">Answer a few simple questions. Get a ready-to-file draft and clear instructions for what to do next.</p><div className="choice-grid"><Choice number="01" icon="⌁" title="Government office isn’t responding / I want information" detail="Draft an RTI application under the RTI Act, 2005." onClick={() => begin('rti')}/><Choice number="02" icon="□" title="A company or seller has wronged me" detail="Prepare a consumer complaint for e-Daakhil." onClick={() => begin('consumer')}/><Choice number="03" icon="?" title="I'm not sure where to start" detail="Three quick questions will point you in the right direction." onClick={() => begin('triage')} /></div><div className="resume-box"><h3>Resume with code</h3><p>Enter your 6-character code to reopen a saved draft.</p><div className="resume-row"><input value={code} maxLength={6} onChange={event => setCode(event.target.value.toUpperCase())} placeholder="ABC123"/><button className="secondary" onClick={() => onResume(code)} disabled={code.length !== 6}>Resume</button></div>{resumeError && <small className="error-message">{resumeError}</small>}</div><div className="trust-row"><span>⏱ {text(language, 'About 5 minutes')}</span><span>▣ {text(language, 'No account needed')}</span><span>◌ {text(language, 'Multiple languages')}</span></div></section> }
-function ResumeAccess({onResume,resumeError}) { const [code,setCode]=useState(''); return <section className="resume-box page"><h3>Resume with code</h3><p>Enter your 6-character code to reopen a saved draft.</p><div className="resume-row"><input value={code} maxLength={6} onChange={event=>setCode(event.target.value.toUpperCase())} placeholder="ABC123"/><button className="secondary" onClick={()=>onResume(code)} disabled={code.length!==6}>Resume</button></div>{resumeError && <small className="error-message">{resumeError}</small>}</section> }
+function LandingHome({ language, begin, onResume, resumeError }) {
+  const [code, setCode] = useState("");
+  return (
+    <section className="hero page">
+      <div className="eyebrow">A simpler way to speak up</div>
+      <h1>
+        Know your rights.
+        <br />
+        <em>Take the next step.</em>
+      </h1>
+      <p className="lead">
+        Answer a few simple questions. Get a ready-to-file draft and clear
+        instructions for what to do next.
+      </p>
+      <div className="choice-grid">
+        <Choice
+          number="01"
+          icon="⌁"
+          title="Government office isn’t responding / I want information"
+          detail="Draft an RTI application under the RTI Act, 2005."
+          onClick={() => begin("rti")}
+        />
+        <Choice
+          number="02"
+          icon="□"
+          title="A company or seller has wronged me"
+          detail="Prepare a consumer complaint for e-Daakhil."
+          onClick={() => begin("consumer")}
+        />
+        <Choice
+          number="03"
+          icon="?"
+          title="I'm not sure where to start"
+          detail="Three quick questions will point you in the right direction."
+          onClick={() => begin("triage")}
+        />
+      </div>
+      <div className="resume-box">
+        <h3>Resume with code</h3>
+        <p>Enter your 6-character code to reopen a saved draft.</p>
+        <div className="resume-row">
+          <input
+            value={code}
+            maxLength={6}
+            onChange={(event) => setCode(event.target.value.toUpperCase())}
+            placeholder="ABC123"
+          />
+          <button
+            className="secondary"
+            onClick={() => onResume(code)}
+            disabled={code.length !== 6}
+          >
+            Resume
+          </button>
+        </div>
+        {resumeError && <small className="error-message">{resumeError}</small>}
+      </div>
+      <div className="trust-row">
+        <span>⏱ {text(language, "About 5 minutes")}</span>
+        <span>▣ {text(language, "No account needed")}</span>
+        <span>◌ {text(language, "Multiple languages")}</span>
+      </div>
+    </section>
+  );
+}
+function ResumeAccess({ onResume, resumeError }) {
+  const [code, setCode] = useState("");
+  return (
+    <section className="resume-box page">
+      <h3>Resume with code</h3>
+      <p>Enter your 6-character code to reopen a saved draft.</p>
+      <div className="resume-row">
+        <input
+          value={code}
+          maxLength={6}
+          onChange={(event) => setCode(event.target.value.toUpperCase())}
+          placeholder="ABC123"
+        />
+        <button
+          className="secondary"
+          onClick={() => onResume(code)}
+          disabled={code.length !== 6}
+        >
+          Resume
+        </button>
+      </div>
+      {resumeError && <small className="error-message">{resumeError}</small>}
+    </section>
+  );
+}
 
-createRoot(document.getElementById('root')).render(<BrowserRouter><App /></BrowserRouter>)
+createRoot(document.getElementById("root")).render(
+  <BrowserRouter>
+    <App />
+  </BrowserRouter>,
+);

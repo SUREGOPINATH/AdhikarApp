@@ -1,21 +1,26 @@
 import express from 'express'
+import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import Database from 'better-sqlite3'
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib'
 
 // Legal thresholds and filing rules change; verify current law before relying on generated documents.
 const app = express()
 const serverDirectory = path.dirname(fileURLToPath(import.meta.url))
-const drafts = new Map()
 const draftTtlMs = 7 * 24 * 60 * 60 * 1000
+const dataDirectory = path.join(serverDirectory, '../data')
+fs.mkdirSync(dataDirectory, { recursive: true })
+const database = new Database(path.join(dataDirectory, 'adhikar.db'))
+database.exec(`CREATE TABLE IF NOT EXISTS drafts (id INTEGER PRIMARY KEY AUTOINCREMENT, resume_code TEXT NOT NULL UNIQUE, draft_type TEXT NOT NULL CHECK (draft_type IN ('rti', 'consumer')), form_data TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, expires_at TEXT NOT NULL); CREATE INDEX IF NOT EXISTS idx_drafts_resume_code ON drafts(resume_code);`)
 app.use(express.json())
 app.use(express.static(path.join(serverDirectory, '../dist')))
 app.get('/api/health', (_req, res) => res.json({ name: 'Adhikar', status: 'ok' }))
-function cleanExpiredDrafts() { const now = Date.now(); for (const [code, draft] of drafts) if (draft.expiresAt <= now) drafts.delete(code) }
-function createResumeCode() { const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; let code; do { code = Array.from({ length: 6 }, () => alphabet[Math.floor(Math.random() * alphabet.length)]).join('') } while (drafts.has(code)); return code }
-app.post('/api/drafts', (req, res) => { cleanExpiredDrafts(); const code = createResumeCode(); drafts.set(code, { data: req.body, expiresAt: Date.now() + draftTtlMs }); res.status(201).json({ code, expiresAt: new Date(Date.now() + draftTtlMs).toISOString() }) })
-app.get('/api/drafts/:code', (req, res) => { cleanExpiredDrafts(); const draft = drafts.get(req.params.code.toUpperCase()); if (!draft) return res.status(404).json({ error: 'Resume code not found or expired.' }); res.json({ data: draft.data, expiresAt: new Date(draft.expiresAt).toISOString() }) })
-setInterval(cleanExpiredDrafts, 60 * 60 * 1000)
+function cleanExpiredDrafts() { database.prepare('DELETE FROM drafts WHERE expires_at < ?').run(new Date().toISOString()) }
+function createResumeCode() { const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; let code; do { code = Array.from({ length: 6 }, () => alphabet[Math.floor(Math.random() * alphabet.length)]).join('') } while (database.prepare('SELECT 1 FROM drafts WHERE resume_code = ?').get(code)); return code }
+app.post('/api/drafts', (req, res) => { cleanExpiredDrafts(); const code = String(req.body.resumeCode || '').trim().toUpperCase() || createResumeCode(); const draftType = req.body.type === 'rti' ? 'rti' : 'consumer'; const formData = req.body.data || req.body; const now = new Date().toISOString(); const expiresAt = new Date(Date.now() + draftTtlMs).toISOString(); database.prepare('INSERT INTO drafts (resume_code, draft_type, form_data, created_at, updated_at, expires_at) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(resume_code) DO UPDATE SET draft_type=excluded.draft_type, form_data=excluded.form_data, updated_at=excluded.updated_at, expires_at=excluded.expires_at').run(code, draftType, JSON.stringify(formData), now, now, expiresAt); res.status(201).json({ code, expiresAt }) })
+app.get('/api/drafts/:code', (req, res) => { cleanExpiredDrafts(); const draft = database.prepare('SELECT * FROM drafts WHERE resume_code = ? AND expires_at >= ?').get(req.params.code.toUpperCase(), new Date().toISOString()); if (!draft) return res.status(404).json({ error: 'Resume code not found or expired.' }); res.json({ data: { type: draft.draft_type, data: JSON.parse(draft.form_data) }, expiresAt: draft.expires_at }) })
+setInterval(cleanExpiredDrafts, 3 * 60 * 60 * 1000)
 app.post('/api/pdf', async (req, res) => {
   const { title = 'Adhikar document', content = '' } = req.body
   const pdf = await PDFDocument.create()
