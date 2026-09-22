@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { createRoot } from 'react-dom/client'
+import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import thresholds from '../config/jurisdiction-thresholds.json'
 import pioMappings from '../config/pio-mappings.json'
 import './styles.css'
@@ -44,7 +45,10 @@ function findPIO(subject, state) {
 }
 function getForum(value) { return thresholds.bands.find(band => band.max === null || Number(value) <= band.max) }
 function App() {
-  const [screen, setScreen] = useState('home')
+  const navigate = useNavigate()
+  const location = useLocation()
+  const screen = location.pathname === '/' ? 'home' : location.pathname.slice(1)
+  const setScreen = nextScreen => navigate(nextScreen === 'home' ? '/' : `/${nextScreen}`)
   const [language, setLanguage] = useState('en')
   const [rti, setRTI] = useState(blankRTI)
   const [consumer, setConsumer] = useState(blankConsumer)
@@ -72,7 +76,7 @@ function App() {
   }
   return <div className="app-shell">
     <header className="topbar"><button className="brand" onClick={() => setScreen('home')}><span className="brand-mark">अ</span><span>Adhikar</span></button><div className="header-actions"><button className="text-button" onClick={() => setScreen('next')}>What happens next</button><select className="language" aria-label="Choose language" value={language} onChange={event => setLanguage(event.target.value)}>{Object.entries(languageNames).map(([code, name]) => <option value={code} key={code}>{name}</option>)}</select></div></header>
-    <main>{screen === 'home' && <Home begin={begin}/>} {screen === 'triage' && <Triage step={triageStep} route={routeTriage}/>} {screen === 'rti' && <RTI data={rti} setData={setRTI} onBack={() => setScreen('home')} onNext={() => finish('rti')}/>} {screen === 'consumer' && <Consumer data={consumer} setData={setConsumer} onBack={() => setScreen('home')} onNext={() => finish('consumer')}/>} {screen === 'review' && <Review result={result} setResult={setResult} onBack={() => setScreen(result.type)} onDownload={download}/>} {screen === 'output' && <Output result={result} onHome={() => setScreen('home')}/>} {screen === 'next' && <Next onBack={() => setScreen('home')}/>}</main>
+    <main><Routes><Route path="/" element={<Home begin={begin}/>} /><Route path="/triage" element={<Triage step={triageStep} route={routeTriage}/>} /><Route path="/rti" element={<RTI data={rti} setData={setRTI} onBack={() => setScreen('home')} onNext={() => finish('rti')}/>} /><Route path="/consumer" element={<Consumer data={consumer} setData={setConsumer} onBack={() => setScreen('home')} onNext={() => finish('consumer')}/>} /><Route path="/review" element={result ? <Review result={result} setResult={setResult} onBack={() => setScreen(result.type)} onDownload={download}/> : <Navigate to="/" replace/>} /><Route path="/output" element={result ? <Output result={result} onHome={() => setScreen('home')}/> : <Navigate to="/" replace/>} /><Route path="/next" element={<Next onBack={() => setScreen('home')}/>} /><Route path="*" element={<Navigate to="/" replace/>} /></Routes></main>
     <footer>This tool helps you draft your application correctly but does not provide legal advice. Verify current fees, formats, and jurisdiction rules before filing, as these can change.</footer>
   </div>
 }
@@ -90,4 +94,4 @@ function Next({onBack}) { return <section className="page info-page"><div classN
 function rtiText(d,pio) { return `To,\nThe Public Information Officer\n${pio.officeTemplate.replace('{state}',d.state)}\n\nSubject: Request for information about ${d.subject || '[subject]'}\n\nApplicant: ${d.name || '[name]'}\nAddress: ${d.address || '[address]'}\nContact: ${d.contact || '[phone/email]'}\n\nInformation requested:\n1. ${d.information || '[specific information requested]'}\n${d.period ? `Time period: ${d.period}` : ''}\n\nI am a citizen of India. I have enclosed the prescribed application fee of Rs. 10 by postal order/IPO, or will pay it online where available.\n\nDate: ${new Date().toLocaleDateString('en-IN')}\nSignature: ____________________` }
 function consumerText(d,forum) { return `BEFORE THE ${forum.forum.toUpperCase()}\n\n${d.name || '[COMPLAINANT]'} v. ${d.oppositeName || '[OPPOSITE PARTY]'}\n\nCOMPLAINT\n\nThe complainant purchased/received the relevant ${d.nature} on ${d.incidentDate || '[date]'} for ${formatINR(d.value)}. The opposite party is located at ${d.oppositeAddress || '[address]'}.\n\nThe complainant seeks refund/replacement and compensation of ${formatINR(d.compensation)} for the loss and inconvenience caused. Supporting documents annexed: ${(d.evidence.length ? d.evidence.join(', ') : '[list documents]')}.\n\nVERIFICATION\nI, ${d.name || '[name]'}, verify that the facts above are true to my knowledge.\n\nPlace: ${d.place || '[place]'}    Date: ${new Date().toLocaleDateString('en-IN')}\nSignature: ____________________` }
 
-createRoot(document.getElementById('root')).render(<App />)
+createRoot(document.getElementById('root')).render(<BrowserRouter><App /></BrowserRouter>)
