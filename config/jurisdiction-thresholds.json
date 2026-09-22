@@ -1,6 +1,6 @@
 {
   "currency": "INR",
-  "effectiveNote": "Verify against the latest Consumer Protection Act rules before filing.",
+  "effectiveNote": "Verify against the latest Consumer Protection Act rules before filing. Comparisons are inclusive: value <= max routes to that band; values above max continue to the next band.",
   "bands": [
     { "max": 5000000, "forum": "District Consumer Disputes Redressal Commission", "shortName": "District Commission" },
     { "max": 20000000, "forum": "State Consumer Disputes Redressal Commission", "shortName": "State Commission" },
