@@ -1,0 +1,12 @@
+{
+  "version": "mvp-1",
+  "categories": [
+    { "id": "ration-pds", "label": "Ration / Public Distribution System", "keywords": ["ration", "pds", "food grain", "fair price shop"], "officeTemplate": "Food and Civil Supplies Department, {state}" },
+    { "id": "pension", "label": "Pension / Social welfare", "keywords": ["pension", "widow pension", "old age", "social security"], "officeTemplate": "Social Welfare Department, {state}" },
+    { "id": "land-records", "label": "Land records / Revenue", "keywords": ["land", "property record", "mutation", "khasra", "revenue"], "officeTemplate": "Revenue Department, {state}" },
+    { "id": "police", "label": "Police complaint / FIR status", "keywords": ["fir", "police", "complaint", "investigation"], "officeTemplate": "Office of the Superintendent of Police, {state}" },
+    { "id": "education", "label": "School / Education board", "keywords": ["school", "college", "education", "exam", "board", "scholarship"], "officeTemplate": "Education Department / Board, {state}" },
+    { "id": "municipal", "label": "Municipal services", "keywords": ["road", "drain", "garbage", "water", "municipal", "street light", "property tax"], "officeTemplate": "Municipal Corporation / Local Body, {state}" },
+    { "id": "general", "label": "Other government information", "keywords": [], "officeTemplate": "Relevant Public Authority, {state}" }
+  ]
+}

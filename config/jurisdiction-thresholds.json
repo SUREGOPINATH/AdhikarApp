@@ -1,0 +1,9 @@
+{
+  "currency": "INR",
+  "effectiveNote": "Verify against the latest Consumer Protection Act rules before filing.",
+  "bands": [
+    { "max": 5000000, "forum": "District Consumer Disputes Redressal Commission", "shortName": "District Commission" },
+    { "max": 20000000, "forum": "State Consumer Disputes Redressal Commission", "shortName": "State Commission" },
+    { "max": null, "forum": "National Consumer Disputes Redressal Commission (NCDRC)", "shortName": "National Commission" }
+  ]
+}
