@@ -18,6 +18,7 @@ import ta from "../i18n/ta.json";
 import kn from "../i18n/kn.json";
 import ml from "../i18n/ml.json";
 import "./styles.css";
+import "./phase3.css";
 
 const states = [
   "Andhra Pradesh",
@@ -414,6 +415,12 @@ function getForum(value) {
     (band) => band.max === null || Number(value) <= band.max,
   );
 }
+function hasUserDraftData(type, draft) {
+  const values = type === "rti"
+    ? [draft.name, draft.applicantAddress?.house, draft.applicantAddress?.street, draft.applicantAddress?.pin, draft.applicantAddress?.city, draft.applicantAddress?.state, draft.contact, draft.subject, draft.information, draft.period]
+    : [draft.name, ...Object.values(draft.complainantAddress || {}), draft.complainantEmail, draft.complainantPhone, draft.oppositeName, ...Object.values(draft.oppositeAddress || {}), draft.oppositeEmail, draft.oppositePhone, draft.productName, draft.incidentDate, draft.value, draft.invoiceNumber, draft.defectDescription, draft.ticketNumbers, draft.compensation, draft.mentalAgony, draft.litigationCosts, draft.place];
+  return values.some((value) => typeof value === "string" && value.trim().length > 0) || (type === "consumer" && draft.evidence?.length > 0);
+}
 function App() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -429,92 +436,96 @@ function App() {
   const [resumeCode, setResumeCode] = useState("");
   const [resumeError, setResumeError] = useState("");
   const [localDraftType, setLocalDraftType] = useState("");
+  const [recoveryDismissed, setRecoveryDismissed] = useState(false);
   const [saveMessage, setSaveMessage] = useState("");
   const [triageStep, setTriageStep] = useState(0);
   const [triage, setTriage] = useState({});
   useEffect(() => translatePage(language), [language, screen]);
   useEffect(() => {
+    if (screen === "rti" || screen === "consumer") localStorage.setItem("adhikar-active-draft", screen);
+  }, [screen]);
+  useEffect(() => {
     const savedRTI = localStorage.getItem("adhikar-rti-draft");
     const savedConsumer = localStorage.getItem("adhikar-consumer-draft");
-    if (savedRTI || savedConsumer)
-      setLocalDraftType(savedConsumer ? "consumer" : "rti");
+    try {
+      const rtiDraft = savedRTI && JSON.parse(savedRTI);
+      const consumerDraft = savedConsumer && JSON.parse(savedConsumer);
+      const lastType = localStorage.getItem("adhikar-active-draft");
+      if (lastType === "consumer" && consumerDraft && hasUserDraftData("consumer", consumerDraft)) setLocalDraftType("consumer");
+      else if (lastType === "rti" && rtiDraft && hasUserDraftData("rti", rtiDraft)) setLocalDraftType("rti");
+      else if (consumerDraft && hasUserDraftData("consumer", consumerDraft)) setLocalDraftType("consumer");
+      else if (rtiDraft && hasUserDraftData("rti", rtiDraft)) setLocalDraftType("rti");
+    } catch {
+      localStorage.removeItem("adhikar-rti-draft");
+      localStorage.removeItem("adhikar-consumer-draft");
+    }
     setDraftReady(true);
   }, []);
   useEffect(() => {
-    if (draftReady)
-      localStorage.setItem("adhikar-rti-draft", JSON.stringify(rti));
-  }, [rti, draftReady]);
+    if (!draftReady || localDraftType) return;
+    if (hasUserDraftData("rti", rti)) localStorage.setItem("adhikar-rti-draft", JSON.stringify(rti));
+    else localStorage.removeItem("adhikar-rti-draft");
+  }, [rti, draftReady, localDraftType]);
   useEffect(() => {
-    if (draftReady)
-      localStorage.setItem("adhikar-consumer-draft", JSON.stringify(consumer));
-  }, [consumer, draftReady]);
+    if (!draftReady || localDraftType) return;
+    if (hasUserDraftData("consumer", consumer)) localStorage.setItem("adhikar-consumer-draft", JSON.stringify(consumer));
+    else localStorage.removeItem("adhikar-consumer-draft");
+  }, [consumer, draftReady, localDraftType]);
 
   function clearLocalDraft() {
     localStorage.removeItem("adhikar-rti-draft");
     localStorage.removeItem("adhikar-consumer-draft");
+    localStorage.removeItem("adhikar-active-draft");
     setRTI(blankRTI);
     setConsumer(blankConsumer);
     setLocalDraftType("");
+    setResumeCode("");
   }
   function resumeLocalDraft() {
     try {
-      if (localDraftType === "rti")
-        setRTI(JSON.parse(localStorage.getItem("adhikar-rti-draft")));
+      if (localDraftType === "rti") setRTI(JSON.parse(localStorage.getItem("adhikar-rti-draft")));
       else {
-        const saved = JSON.parse(
-          localStorage.getItem("adhikar-consumer-draft"),
-        );
-        setConsumer({
-          ...blankConsumer,
-          ...saved,
-          complainantAddress: {
-            ...blankConsumer.complainantAddress,
-            ...saved.complainantAddress,
-          },
-          oppositeAddress: {
-            ...blankConsumer.oppositeAddress,
-            ...saved.oppositeAddress,
-          },
-        });
+        const saved = JSON.parse(localStorage.getItem("adhikar-consumer-draft"));
+        setConsumer({ ...blankConsumer, ...saved, complainantAddress: { ...blankConsumer.complainantAddress, ...saved.complainantAddress }, oppositeAddress: { ...blankConsumer.oppositeAddress, ...saved.oppositeAddress } });
       }
       setScreen(localDraftType);
       setLocalDraftType("");
-    } catch {
-      clearLocalDraft();
-    }
+    } catch { clearLocalDraft(); }
   }
   async function saveDraft(type) {
     const current = type === "rti" ? rti : consumer;
-    const partialError =
-      type === "consumer" &&
-      current.complainantPhone &&
-      !/^\d{10}$/.test(current.complainantPhone)
-        ? "Enter a valid 10-digit phone number before saving."
+    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const pinFields = type === "rti" ? [current.applicantAddress?.pin] : [current.complainantAddress?.pin, current.oppositeAddress?.pin];
+    const contacts = type === "rti" ? [current.contact] : [current.complainantPhone, current.oppositePhone];
+    const emails = type === "rti" ? [] : [current.complainantEmail, current.oppositeEmail];
+    const amounts = type === "consumer" ? [current.value, current.mentalAgony, current.litigationCosts] : [];
+    const phoneError = contacts.some((phone) => phone && (/^\d+$/.test(phone) ? !/^\d{10}$/.test(phone) : type === "consumer"))
+      ? "Entered phone numbers must contain exactly 10 digits."
+      : (type === "rti" && current.contact?.includes("@") && !emailPattern.test(current.contact)) || emails.some((email) => email && !emailPattern.test(email))
+        ? "Enter a valid email address."
         : "";
-    if (partialError) {
-      setSaveMessage(partialError);
-      return;
-    }
+    const pinError = pinFields.some((pin) => pin && !/^\d{6}$/.test(pin)) ? "Any PIN Code you enter must contain exactly 6 digits." : "";
+    const amountError = amounts.some((amount) => amount !== "" && (!Number.isFinite(Number(amount)) || Number(amount) < 0)) || (current.value && Number(current.value) <= 0)
+      ? "Entered claim and compensation amounts must be valid positive numbers (or zero for optional compensation)."
+      : "";
+    const dateValue = type === "consumer" ? current.incidentDate : "";
+    const dateError = dateValue && dateValue > new Date().toISOString().slice(0, 10) ? "The incident date cannot be in the future." : "";
+    if (phoneError || pinError || amountError || dateError) { setSaveMessage(phoneError || pinError || amountError || dateError); return; }
     try {
-      const response = await fetch("/api/drafts", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ type, resumeCode, data: current }),
-      });
+      const response = await fetch("/api/drafts", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ type, resumeCode, data: current }) });
+      if (!response.ok) throw new Error("Draft save failed");
       const saved = await response.json();
       setResumeCode(saved.code);
       setSaveMessage(`Draft saved — your code is ${saved.code}`);
-      setTimeout(() => setSaveMessage(""), 5000);
-    } catch {
-      setSaveMessage(
-        "Draft could not be saved. Your local copy is still safe.",
-      );
-    }
+      window.setTimeout(() => setSaveMessage(""), 6000);
+    } catch { setSaveMessage("Draft could not be saved. Your local copy is still safe."); }
   }
-
   function begin(type) {
+    if (localDraftType) clearLocalDraft();
     setScreen(type);
     setResult(null);
+    setResumeCode("");
+    setSaveMessage("");
   }
   function routeTriage(answer) {
     const next = { ...triage, [triageStep]: answer };
@@ -525,6 +536,7 @@ function App() {
     } else setTriageStep(triageStep + 1);
   }
   async function finish(type) {
+    const formData = type === "rti" ? rti : consumer;
     const draft =
       type === "rti"
         ? {
@@ -549,8 +561,9 @@ function App() {
       const response = await fetch("/api/drafts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(draft),
+        body: JSON.stringify({ type, resumeCode, data: formData }),
       });
+      if (!response.ok) throw new Error("Draft save failed");
       const saved = await response.json();
       setResumeCode(saved.code || "");
       setResult({ ...draft, resumeCode: saved.code || "" });
@@ -567,24 +580,16 @@ function App() {
       const response = await fetch(`/api/drafts/${code.trim().toUpperCase()}`);
       if (!response.ok) throw new Error();
       const saved = await response.json();
-      if (saved.data?.type === "rti") {
-        setRTI(saved.data.data);
-        setResult(saved.data);
+      if (saved.type === "rti") {
+        setRTI({ ...blankRTI, ...saved.formData, applicantAddress: { ...emptyAddress, ...saved.formData.applicantAddress } });
+        setScreen("rti");
       } else {
-        setConsumer({
-          ...blankConsumer,
-          ...saved.data.data,
-          complainantAddress: saved.data.data.complainantAddress || {
-            ...emptyAddress,
-          },
-          oppositeAddress: saved.data.data.oppositeAddress || {
-            ...emptyAddress,
-          },
-        });
-        setResult(saved.data);
+        setConsumer({ ...blankConsumer, ...saved.formData, complainantAddress: { ...emptyAddress, ...saved.formData.complainantAddress }, oppositeAddress: { ...emptyAddress, ...saved.formData.oppositeAddress } });
+        setScreen("consumer");
       }
+      setLocalDraftType("");
+      setRecoveryDismissed(false);
       setResumeCode(code.trim().toUpperCase());
-      setScreen("review");
     } catch {
       setResumeError("That resume code was not found or has expired.");
     }
@@ -636,6 +641,14 @@ function App() {
         </div>
       </header>
       <main>
+        {screen === "home" && localDraftType && !recoveryDismissed && (
+          <div className="draft-recovery-banner" role="status">
+            <span>You have an unfinished {localDraftType === "rti" ? "RTI" : "consumer complaint"} draft.</span>
+            <button type="button" className="secondary" onClick={resumeLocalDraft}>Resume</button>
+            <button type="button" className="back-link" onClick={clearLocalDraft}>Start Over</button>
+            <button type="button" className="dismiss-button" aria-label="Dismiss draft reminder" onClick={() => setRecoveryDismissed(true)}>×</button>
+          </div>
+        )}
         <Routes>
           <Route
             path="/"
@@ -654,6 +667,8 @@ function App() {
                 setData={setRTI}
                 onBack={() => setScreen("home")}
                 onNext={() => finish("rti")}
+                onSaveDraft={() => saveDraft("rti")}
+                saveMessage={saveMessage}
               />
             }
           />
@@ -665,6 +680,8 @@ function App() {
                 setData={setConsumer}
                 onBack={() => setScreen("home")}
                 onNext={() => finish("consumer")}
+                onSaveDraft={() => saveDraft("consumer")}
+                saveMessage={saveMessage}
               />
             }
           />
@@ -1011,7 +1028,7 @@ function AddressFields({ value, onChange, prefix }) {
     </div>
   );
 }
-function StructuredConsumer({ data, setData, onBack, onNext }) {
+function StructuredConsumer({ data, setData, onBack, onNext, onSaveDraft, saveMessage }) {
   const update = (key, value) => setData({ ...data, [key]: value });
   const updateAddress = (key, value) => update(key, value);
   const toggle = (item) =>
@@ -1254,7 +1271,7 @@ function StructuredConsumer({ data, setData, onBack, onNext }) {
           ))}
         </div>
       </div>
-      <FormActions onBack={onBack} onNext={onNext} />
+      <FormActions onBack={onBack} onNext={onNext} onSaveDraft={onSaveDraft} saveMessage={saveMessage} />
     </form>
   );
 }
@@ -1480,16 +1497,18 @@ function Consumer({ data, setData, onBack, onNext }) {
     </section>
   );
 }
-function FormActions({ onBack, onNext }) {
+function FormActions({ onBack, onNext, onSaveDraft, saveMessage }) {
   return (
-    <div className="actions">
-      <button type="button" className="back-link" onClick={onBack}>
-        ← Back
-      </button>
-      <button type="submit" className="primary">
-        Review draft <span>→</span>
-      </button>
-    </div>
+    <>
+      <div className="actions">
+        <button type="button" className="back-link" onClick={onBack}>← Back</button>
+        <div className="form-action-group">
+          {onSaveDraft && <button type="button" className="secondary" onClick={onSaveDraft}>Save Draft</button>}
+          <button type="submit" className="primary">Review draft <span>→</span></button>
+        </div>
+      </div>
+      {saveMessage && <p className="save-draft-message" role="status">{saveMessage}</p>}
+    </>
   );
 }
 function Review({ result, setResult, onBack, onDownload }) {
@@ -1775,7 +1794,7 @@ function consumerText(d, forum) {
   return `${complaintNumberNote}\n\nCONSUMER COMPLAINT NO. _______ OF ${new Date().getFullYear()}\n\nBEFORE THE ${forum.forum.toUpperCase()}\n\nIN THE MATTER OF:\n${d.name || "[COMPLAINANT NAME]"} ... Complainant\nVERSUS\n${d.oppositeName || "[OPPOSITE PARTY NAME]"} ... Opposite Party\n\nCOMPLAINT UNDER SECTION 35 OF THE CONSUMER PROTECTION ACT, 2019\n\n1. COMPLAINANT DETAILS\nName: ${d.name || "[full name]"}\nAddress: ${d.address || "[complete address with PIN code]"}\nPhone: ${d.complainantPhone || "[phone number]"}\nEmail: ${d.complainantEmail || "[email address]"}\n\n2. OPPOSITE PARTY DETAILS\nName: ${d.oppositeName || "[seller/company name]"}\nRegistered address: ${d.oppositeAddress || "[complete address with PIN code]"}\nPhone: ${d.oppositePhone || "[phone number]"}\nEmail: ${d.oppositeEmail || "[email address]"}\n\n3. FACTS AND CAUSE OF ACTION\n${cause}\n\nThe cause of action first arose on ${d.incidentDate || "[date]"} and continues because the Opposite Party has failed to provide an effective remedy. The conduct complained of amounts to ${d.nature || "deficiency in service"} and, where applicable, unfair trade practice under the Consumer Protection Act, 2019.\n\n4. JURISDICTION\nThis Hon'ble Commission has territorial jurisdiction because ${jurisdictionBasis}. It has pecuniary jurisdiction because the value paid/consideration stated above falls within the statutory limit of the ${forum.shortName}. The applicable limits and filing requirements should be verified on the official portal before submission.\n\n5. RELIEF SOUGHT\nThe Complainant respectfully prays that this Hon'ble Commission may be pleased to:\na) Direct the Opposite Party to refund ${formatINR(d.value)} towards the product/service, or provide a replacement/remedy of equivalent value;\nb) Award ${formatINR(d.mentalAgony)} towards mental agony, harassment, inconvenience, and loss caused by the defect/deficiency;\nc) Award ${formatINR(d.litigationCosts)} towards reasonable litigation and filing costs;\nd) Grant any other relief that this Hon'ble Commission considers just and proper.\n\n6. LIST OF ANNEXURES / EVIDENCE\n${evidence.map((item, index) => `${index + 1}. ${item}`).join("\n")}\n\nVERIFICATION\nI, ${d.name || "[complainant name]"}, the Complainant above named, do hereby verify that the contents of paragraphs 1 to 6 are true and correct to the best of my knowledge and belief, and that no material fact has been concealed.\n\nPlace: ${d.place || "[city/district]"}\nDate: ${new Date().toLocaleDateString("en-IN")}\n\nSignature: ____________________\n${d.name || "[complainant name]"}\nComplainant`;
 }
 
-function StructuredRTI({ data, setData, onBack, onNext }) {
+function StructuredRTI({ data, setData, onBack, onNext, onSaveDraft, saveMessage }) {
   const update = (key, value) => setData({ ...data, [key]: value });
   const updateAddress = (value) => update("applicantAddress", value);
   const submit = (event) => {
@@ -1883,7 +1902,7 @@ function StructuredRTI({ data, setData, onBack, onNext }) {
           />
         </Field>
       </div>
-      <FormActions onBack={onBack} onNext={onNext} />
+      <FormActions onBack={onBack} onNext={onNext} onSaveDraft={onSaveDraft} saveMessage={saveMessage} />
     </form>
   );
 }
