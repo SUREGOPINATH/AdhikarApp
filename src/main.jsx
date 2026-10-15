@@ -8,8 +8,8 @@ import {
   useLocation,
   useNavigate,
 } from "react-router-dom";
-import thresholds from "../config/jurisdiction-thresholds.json";
 import pioMappings from "../config/pio-mappings.json";
+import { getAnnexures, getForum } from "./lib/legal.js";
 import en from "../i18n/en.json";
 import hi from "../i18n/hi.json";
 import mr from "../i18n/mr.json";
@@ -323,29 +323,6 @@ const translations = {
 function text(language, key) {
   return (translations[language] || en)[key] || key;
 }
-function getAnnexures(data) {
-  const items = ["Invoice / purchase receipt", "Payment proof"];
-  if (data.nature === "defective product")
-    items.push("Unboxing video / defect photographs");
-  if (data.nature === "non-delivery") items.push("Tracking and delivery logs");
-  const aliases = {
-    "invoice / receipt": "Invoice / purchase receipt",
-    "invoice / purchase receipt": "Invoice / purchase receipt",
-    "payment receipt / bank statement": "Payment proof",
-    "payment proof": "Payment proof",
-    "screenshots / photos": "Photos / videos",
-    "photos / videos": "Photos / videos",
-  };
-  const seen = new Set();
-  return [...items, ...data.evidence].filter((item) => {
-    const normalized = item.trim().toLowerCase();
-    const canonical = aliases[normalized] || item.trim();
-    const key = canonical.toLowerCase();
-    if (!key || seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
-}
 function cleanGeneratedDraft(draft) {
   return draft
     .split("\n")
@@ -407,12 +384,6 @@ function findPIO(subject, state) {
     pioMappings.categories.find((item) =>
       item.keywords.some((keyword) => lower.includes(keyword)),
     ) || pioMappings.categories[pioMappings.categories.length - 1]
-  );
-}
-// Legal disclaimer: verify these inclusive thresholds against current consumer law before relying on generated drafts.
-function getForum(value) {
-  return thresholds.bands.find(
-    (band) => band.max === null || Number(value) <= band.max,
   );
 }
 function hasUserDraftData(type, draft) {
