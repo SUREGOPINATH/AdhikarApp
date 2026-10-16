@@ -39,6 +39,19 @@ pipeline {
                 }
             }
         }
+        stage('Deploy') {
+            steps {
+                script {
+                    // Stop and remove the old container if it exists, then run the new one
+                    sh 'docker stop adhikar-app-container || true'
+                    sh 'docker rm adhikar-app-container || true'
+                    
+                    // Pull the latest image and run it on port 3000
+                    sh 'docker pull gopinath3008/adhikar-app:latest'
+                    sh 'docker run -d --name adhikar-app-container -p 3000:3000 gopinath3008/adhikar-app:latest'
+                }
+            }
+        }
     }
 
     post {
