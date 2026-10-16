@@ -52,13 +52,13 @@ pipeline {
                 }
             }
         }
-            stage('Smoke Test') {
+        stage('Smoke Test') {
             steps {
                 script {
                     echo 'Waiting for application health check to pass...'
                     
-                    // Loop to check Docker health status (polls up to 10 times, every 3 seconds)
-                    sh '''
+                    // Added #!/bin/bash at the top so the loop and brace expansion work properly
+                    sh '''#!/bin/bash
                         for i in {1..10}; do
                             HEALTH_STATUS=$(docker inspect --format=\'{{.State.Health.Status}}\' adhikar-app-container 2>/dev/null || echo "starting")
                             echo "Attempt $i: Container health status is [$HEALTH_STATUS]"
@@ -79,8 +79,7 @@ pipeline {
                     '''
                 }
             }
-        }
-    
+        }    
     }
 
 
