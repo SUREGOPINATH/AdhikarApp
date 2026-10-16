@@ -26,7 +26,7 @@ pipeline {
 
         stage('Build & Push to Docker Hub') {
             steps {
-                sh 'docker build -t suregopinath/adhikar:latest .'
+                sh 'docker build -t gopinath3008/adhikar-app:latest .'
 
                 // Securely login and push using the ID you created in Jenkins
                 withCredentials([usernamePassword(credentialsId: 'Docker_Credentials', 
