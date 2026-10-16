@@ -41,14 +41,10 @@ pipeline {
         }
         stage('Deploy') {
             steps {
-                script {
-                    // Stop and remove the old container if it exists, then run the new one
-                    sh 'docker stop adhikar-app-container || true'
-                    sh 'docker rm adhikar-app-container || true'
-                    
+                script {                    
                     // Pull the latest image and run it on port 3000
                     sh 'docker pull gopinath3008/adhikar-app:latest'
-                    sh 'docker run -d --name adhikar-app-container -p 3000:3000 gopinath3008/adhikar-app:latest'
+                    sh 'docker run -d --name adhikar-app-latest -p 3000:3000 gopinath3008/adhikar-app:latest'
                 }
             }
         }
@@ -79,7 +75,23 @@ pipeline {
                     '''
                 }
             }
-        }    
+        }  
+        stage('Switch Traffic (Zero-Downtime Swap)') {
+            steps {
+                script {
+                    echo 'Swapping containers with zero downtime...'
+                    
+                    // Stop and remove the old container if it exists
+                    sh 'docker stop adhikar-app-container || true'
+                    sh 'docker rm adhikar-app-container || true'
+                    
+                    // Rename the new container to take over the primary name
+                    sh 'docker rename adhikar-app-latest adhikar-app-container'
+                    
+                    echo 'Deployment complete! Old container replaced seamlessly.'
+                }
+            }
+        }  
     }
 
 
