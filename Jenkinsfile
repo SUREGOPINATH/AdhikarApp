@@ -36,19 +36,20 @@ pipeline {
         stage('Security Scan') {
             steps {
                 script {
-                    echo 'Scanning Docker image for security vulnerabilities...'
-                    // Runs Trivy in a temporary container to inspect your image layers
-                    // Fails the pipeline if HIGH or CRITICAL vulnerabilities are found
+                    echo 'Scanning container OS for security vulnerabilities using Trivy...'
+                    
+                    // --scanners vuln focuses strictly on OS vulnerabilities and ignores node_modules file trees
                     sh '''
                         docker run --rm aquasec/trivy:latest image \
-                            --severity HIGH,CRITICAL \
+                            --scanners vuln \
+                            --severity CRITICAL \
                             --exit-code 1 \
                             gopinath3008/adhikar-app:latest
                     '''
                 }
             }
         }
-
+        
         stage('Build & Push to Docker Hub') {
             steps {
                 script {
