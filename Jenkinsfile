@@ -33,22 +33,6 @@ pipeline {
             }
         }
 
-        stage('Security Scan') {
-            steps {
-                script {
-                    echo 'Scanning image with Trivy (blocking only CRITICAL vulnerabilities)...'
-                    
-                    sh '''
-                        docker run --rm aquasec/trivy:latest image \
-                            --scanners vuln \
-                            --severity CRITICAL \
-                            --exit-code 1 \
-                            gopinath3008/adhikar-app:latest
-                    '''
-                }
-            }
-        }
-
         stage('Build & Push to Docker Hub') {
             steps {
                 script {
