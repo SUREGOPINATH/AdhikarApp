@@ -1,4 +1,4 @@
-FROM node:24-bookworm-slim AS build
+FROM node:24-alpine AS build
 
 WORKDIR /app
 
@@ -12,7 +12,7 @@ RUN npm ci
 COPY . .
 RUN npm run build
 
-FROM node:24-bookworm-slim AS runtime
+FROM node:24-alpine AS runtime
 
 WORKDIR /app
 ENV NODE_ENV=production
