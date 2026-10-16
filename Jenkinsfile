@@ -28,7 +28,7 @@ pipeline {
             steps {
                 script {
                     sh "echo 'Building Docker image...'"
-                    sh "docker build -t gopinath3008/adhikar-app:latest ."
+                    sh "docker build --no-cache -t gopinath3008/adhikar-app:latest ."
                 }
             }
         }
