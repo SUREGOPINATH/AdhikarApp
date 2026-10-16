@@ -54,6 +54,36 @@ pipeline {
         }
     }
 
+    stage('Smoke Test') {
+            steps {
+                script {
+                    echo 'Waiting for application health check to pass...'
+                    
+                    // Loop to check Docker health status (polls up to 10 times, every 3 seconds)
+                    sh '''
+                        for i in {1..10}; do
+                            HEALTH_STATUS=$(docker inspect --format=\'{{.State.Health.Status}}\' adhikar-app-container 2>/dev/null || echo "starting")
+                            echo "Attempt $i: Container health status is [$HEALTH_STATUS]"
+                            
+                            if [ "$HEALTH_STATUS" = "healthy" ]; then
+                                echo "Smoke test passed! Application is live and healthy."
+                                exit 0
+                            elif [ "$HEALTH_STATUS" = "unhealthy" ]; then
+                                echo "Smoke test failed! Container reported unhealthy."
+                                exit 1
+                            fi
+                            
+                            sleep 3
+                        done
+                        
+                        echo "Smoke test timed out waiting for health check."
+                        exit 1
+                    '''
+                }
+            }
+        }
+    }
+
     post {
         success {
             echo 'Pipeline completed successfully, all tests passed, and image pushed!'
