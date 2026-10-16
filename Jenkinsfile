@@ -24,12 +24,34 @@ pipeline {
             }
         }
 
-        stage('Build & Push to Docker Hub') {
+        stage('Build Docker Image') {
             steps {
                 script {
                     sh "echo 'Building Docker image...'"
                     sh "docker build -t gopinath3008/adhikar-app:latest ."
-                    
+                }
+            }
+        }
+
+        stage('Security Scan') {
+            steps {
+                script {
+                    echo 'Scanning Docker image for security vulnerabilities...'
+                    // Runs Trivy in a temporary container to inspect your image layers
+                    // Fails the pipeline if HIGH or CRITICAL vulnerabilities are found
+                    sh '''
+                        docker run --rm aquasec/trivy:latest image \
+                            --severity HIGH,CRITICAL \
+                            --exit-code 1 \
+                            gopinath3008/adhikar-app:latest
+                    '''
+                }
+            }
+        }
+
+        stage('Build & Push to Docker Hub') {
+            steps {
+                script {
                     withCredentials([usernamePassword(credentialsId: 'Docker_Credentials', 
                                                       usernameVariable: 'DOCKER_USER', 
                                                       passwordVariable: 'DOCKER_PASS')]) {
