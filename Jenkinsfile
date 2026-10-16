@@ -27,6 +27,7 @@ pipeline {
         stage('Build & Push to Docker Hub') {
             steps {
                 script {
+                    sh "echo 'Building Docker image...'"
                     sh "docker build -t gopinath3008/adhikar-app:latest ."
                     
                     withCredentials([usernamePassword(credentialsId: 'Docker_Credentials', 
