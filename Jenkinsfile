@@ -26,24 +26,26 @@ pipeline {
 
         stage('Build & Push to Docker Hub') {
             steps {
-                sh 'docker build -t gopinath3008/adhikar-app:latest .'
-
-                // Securely login and push using the ID you created in Jenkins
-                withCredentials([usernamePassword(credentialsId: 'Docker_Credentials', 
+                script {
+                    sh "docker build -t gopinath3008/adhikar-app:latest ."
+                    
+                    withCredentials([usernamePassword(credentialsId: 'docker-hub-credentials', 
                                                       usernameVariable: 'DOCKER_USER', 
                                                       passwordVariable: 'DOCKER_PASS')]) {
-                        sh "echo '$DOCKER_PASS' | docker login -u '$DOCKER_USER' --password-stdin"
-                        sh "docker push gopinath3008/adhikar-app:latest"}
+                        sh 'echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin'
+                        sh "docker push gopinath3008/adhikar-app:latest"
+                    }
+                }
             }
         }
     }
 
     post {
         success {
-            echo 'Pipeline completed successfully and all tests passed!'
+            echo 'Pipeline completed successfully, all tests passed, and image pushed!'
         }
         failure {
-            echo 'Pipeline failed during tests or build stage.'
+            echo 'Pipeline failed.'
         }
     }
 }
