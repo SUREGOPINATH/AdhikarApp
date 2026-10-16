@@ -36,9 +36,8 @@ pipeline {
         stage('Security Scan') {
             steps {
                 script {
-                    echo 'Scanning container OS for security vulnerabilities using Trivy...'
+                    echo 'Scanning image with Trivy (blocking only CRITICAL vulnerabilities)...'
                     
-                    // --scanners vuln focuses strictly on OS vulnerabilities and ignores node_modules file trees
                     sh '''
                         docker run --rm aquasec/trivy:latest image \
                             --scanners vuln \
@@ -49,7 +48,7 @@ pipeline {
                 }
             }
         }
-        
+
         stage('Build & Push to Docker Hub') {
             steps {
                 script {
