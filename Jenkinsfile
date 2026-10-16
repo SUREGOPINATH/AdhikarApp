@@ -52,9 +52,7 @@ pipeline {
                 }
             }
         }
-    }
-
-    stage('Smoke Test') {
+            stage('Smoke Test') {
             steps {
                 script {
                     echo 'Waiting for application health check to pass...'
@@ -82,7 +80,10 @@ pipeline {
                 }
             }
         }
+    
     }
+
+
 
     post {
         success {
