@@ -9,5 +9,8 @@ const { app } = createApp({
 });
 
 if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
-  app.listen(3001, () => console.log("Adhikar API listening on http://localhost:3001"));
+  const PORT = process.env.PORT || 3000;
+  app.listen(PORT, "0.0.0.0", () => {
+    console.log(`Adhikar API listening on port ${PORT}`);
+  });
 }
