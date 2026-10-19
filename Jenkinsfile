@@ -33,7 +33,7 @@ pipeline {
             }
         }
 
-        stage('Build & Push to Docker Hub') {
+        stage('Push the image to Docker Hub') {
             steps {
                 script {
                     withCredentials([usernamePassword(credentialsId: 'Docker_Credentials', 
@@ -45,16 +45,16 @@ pipeline {
                 }
             }
         }
-        stage('Deploy') {
+        stage('Deploy the image to Docker container') {
             steps {
                 script {
                     // Stop and remove the old container if it exists, then run the new one
-                    sh 'docker stop adhikar-app-container || true'
-                    sh 'docker rm adhikar-app-container || true'
+                    sh 'docker stop adhikar-app || true'
+                    sh 'docker rm adhikar-app || true'
                     
                     // Pull the latest image and run it on port 3000
                     sh 'docker pull gopinath3008/adhikar-app:latest'
-                    sh 'docker run -d --name adhikar-app-container -p 3000:3000 gopinath3008/adhikar-app:latest'
+                    sh 'docker run -d --name adhikar-app -p 3000:3000 -v adhikar_data:/app/data gopinath3008/adhikar-app:latest'
                 }
             }
         }
@@ -66,7 +66,7 @@ pipeline {
                     // Added #!/bin/bash at the top so the loop and brace expansion work properly
                     sh '''#!/bin/bash
                         for i in {1..10}; do
-                            HEALTH_STATUS=$(docker inspect --format=\'{{.State.Health.Status}}\' adhikar-app-container 2>/dev/null || echo "starting")
+                            HEALTH_STATUS=$(docker inspect --format=\'{{.State.Health.Status}}\' adhikar-app 2>/dev/null || echo "starting")
                             echo "Attempt $i: Container health status is [$HEALTH_STATUS]"
                             
                             if [ "$HEALTH_STATUS" = "healthy" ]; then
