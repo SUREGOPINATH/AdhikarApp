@@ -33,69 +33,69 @@ pipeline {
             }
         }
 
-        stage('Push the image to Docker Hub') {
+        stage('Push Image to Docker Hub') {
             steps {
                 script {
                     withCredentials([usernamePassword(credentialsId: 'Docker_Credentials', 
-                                                      usernameVariable: 'DOCKER_USER', 
-                                                      passwordVariable: 'DOCKER_PASS')]) {
+                                                    usernameVariable: 'DOCKER_USER', 
+                                                    passwordVariable: 'DOCKER_PASS')]) {
                         sh 'echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin'
                         sh "docker push gopinath3008/adhikar-app:latest"
                     }
                 }
             }
         }
-        stage('Deploy the image to Docker container') {
+
+        stage('Deploy to Remote Server') {
             steps {
                 script {
-                    // Stop and remove the old container if it exists, then run the new one
-                    sh 'docker stop adhikar-app || true'
-                    sh 'docker rm adhikar-app || true'
+                    echo 'Transferring docker-compose to devops-server...'
+                    // 1. Transfer compose file to the VM
+                    sh 'multipass transfer docker-compose.yml devops-server:/home/ubuntu/docker-compose.yml'
                     
-                    // Pull the latest image and run it on port 3000
-                    sh 'docker pull gopinath3008/adhikar-app:latest'
-                    sh 'docker run -d --name adhikar-app -p 3000:3000 -v adhikar_data:/app/data gopinath3008/adhikar-app:latest'
+                    echo 'Deploying application via Docker Compose on remote server...'
+                    // 2. Pull the latest image and restart containers cleanly on the remote VM
+                    sh 'multipass exec devops-server -- docker compose -f /home/ubuntu/docker-compose.yml pull'
+                    sh 'multipass exec devops-server -- docker compose -f /home/ubuntu/docker-compose.yml up -d --force-recreate'
                 }
             }
         }
-        stage('Smoke Test') {
+
+        stage('Smoke Test Remote Container') {
             steps {
                 script {
-                    echo 'Waiting for application health check to pass...'
+                    echo 'Waiting for health check on remote devops-server...'
                     
-                    // Added #!/bin/bash at the top so the loop and brace expansion work properly
                     sh '''#!/bin/bash
                         for i in {1..10}; do
-                            HEALTH_STATUS=$(docker inspect --format=\'{{.State.Health.Status}}\' adhikar-app 2>/dev/null || echo "starting")
-                            echo "Attempt $i: Container health status is [$HEALTH_STATUS]"
+                            HEALTH_STATUS=$(multipass exec devops-server -- docker inspect --format='{{.State.Health.Status}}' adhikar-app 2>/dev/null || echo "starting")
+                            echo "Attempt $i: Remote container health status is [$HEALTH_STATUS]"
                             
                             if [ "$HEALTH_STATUS" = "healthy" ]; then
-                                echo "Smoke test passed! Application is live and healthy."
+                                echo "Remote smoke test passed! Application is live and healthy on devops-server."
                                 exit 0
                             elif [ "$HEALTH_STATUS" = "unhealthy" ]; then
-                                echo "Smoke test failed! Container reported unhealthy."
+                                echo "Smoke test failed! Remote container reported unhealthy."
                                 exit 1
                             fi
                             
                             sleep 3
                         done
                         
-                        echo "Smoke test timed out waiting for health check."
+                        echo "Smoke test timed out waiting for remote container health check."
                         exit 1
                     '''
                 }
             }
-        }    
+        }
     }
-
-
 
     post {
         success {
-            echo 'Pipeline completed successfully, all tests passed, and image pushed!'
+            echo '🎉 Pipeline completed successfully, image pushed, and deployed to devops-server!'
         }
         failure {
-            echo 'Pipeline failed.'
+            echo '❌ Pipeline failed during execution.'
         }
     }
 }
