@@ -49,14 +49,22 @@ pipeline {
         stage('Deploy to Remote Server') {
             steps {
                 script {
-                    echo 'Transferring docker-compose to devops-server...'
-                    // 1. Transfer compose file to the VM
-                    sh 'multipass transfer docker-compose.yml devops-server:/home/ubuntu/docker-compose.yml'
+                    echo 'Transferring docker-compose to devops-server via SCP...'
+                    
+                    // Note: If your Jenkins container needs an SSH key, you can mount it or use credentials. 
+                    // For local testing, we can use sshpass or standard scp with strict key checking disabled.
+                    sh '''
+                        # Ensure sshpass or ssh client is available, then copy the file
+                        scp -o StrictHostKeyChecking=no docker-compose.yml ubuntu@172.17.0.1:/home/ubuntu/docker-compose.yml
+                    '''
                     
                     echo 'Deploying application via Docker Compose on remote server...'
-                    // 2. Pull the latest image and restart containers cleanly on the remote VM
-                    sh 'multipass exec devops-server -- docker compose -f /home/ubuntu/docker-compose.yml pull'
-                    sh 'multipass exec devops-server -- docker compose -f /home/ubuntu/docker-compose.yml up -d --force-recreate'
+                    sh '''
+                        ssh -o StrictHostKeyChecking=no ubuntu@172.17.0.1 '
+                            docker compose -f /home/ubuntu/docker-compose.yml pull &&
+                            docker compose -f /home/ubuntu/docker-compose.yml up -d --force-recreate
+                        '
+                    '''
                 }
             }
         }
@@ -68,7 +76,7 @@ pipeline {
                     
                     sh '''#!/bin/bash
                         for i in {1..10}; do
-                            HEALTH_STATUS=$(multipass exec devops-server -- docker inspect --format='{{.State.Health.Status}}' adhikar-app 2>/dev/null || echo "starting")
+                            HEALTH_STATUS=$(ssh -o StrictHostKeyChecking=no ubuntu@172.17.0.1 "docker inspect --format='{{.State.Health.Status}}' adhikar-app 2>/dev/null || echo 'starting'")
                             echo "Attempt $i: Remote container health status is [$HEALTH_STATUS]"
                             
                             if [ "$HEALTH_STATUS" = "healthy" ]; then
@@ -87,8 +95,7 @@ pipeline {
                     '''
                 }
             }
-        }
-    }
+        }    }
 
     post {
         success {
